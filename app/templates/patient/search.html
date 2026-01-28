@@ -71,7 +71,11 @@
 </div>
 {% endblock %}
 
+{% block dashboard_scripts %}
 <script>
+// Specialities data from server
+const SPECIALITIES_DATA = {{ specialities|tojson|safe }};
+
 document.addEventListener('DOMContentLoaded', function() {
     // Автоматический поиск при загрузке страницы
     searchDoctors();
@@ -159,8 +163,7 @@ function displayDoctors(doctors) {
 }
 
 function getSpecialityName(speciality) {
-    const specialities = {{ specialities|tojson }};
-    return specialities[speciality] ? specialities[speciality].de : speciality;
+    return SPECIALITIES_DATA[speciality] ? SPECIALITIES_DATA[speciality].de : speciality;
 }
 
 async function viewSlots(doctorId) {
@@ -273,3 +276,4 @@ function clearFilters() {
     searchDoctors();
 }
 </script>
+{% endblock dashboard_scripts %}
