@@ -14,7 +14,6 @@ practice_api = Blueprint('practice_api', __name__)
 
 
 @bp.route('/profile')
-@jwt_required()
 def practice_profile():
     """Страница профиля практики"""
     return render_template('doctor/practice_profile.html')
@@ -27,7 +26,8 @@ def api_get_practice_profile():
     identity = get_jwt_identity()
     
     # Получаем доктора
-    doctor = Doctor.query.filter_by(email=identity['email']).first()
+    import uuid
+    doctor = Doctor.query.get(uuid.UUID(identity['id']))
     if not doctor or not doctor.practice_id:
         return jsonify({'error': 'Practice not found'}), 404
     
@@ -65,7 +65,8 @@ def api_update_practice_profile():
     data = request.get_json()
     
     # Получаем доктора и проверяем права
-    doctor = Doctor.query.filter_by(email=identity['email']).first()
+    import uuid
+    doctor = Doctor.query.get(uuid.UUID(identity['id']))
     if not doctor or not doctor.practice_id:
         return jsonify({'error': 'Practice not found'}), 404
     

@@ -75,9 +75,15 @@ class Practice(db.Model):
     @property
     def address_dict(self):
         """Получить адрес как словарь"""
+        if not self.address:
+            return {}
         if isinstance(self.address, str):
-            return json.loads(self.address)
-        return self.address
+            try:
+                return json.loads(self.address)
+            except (json.JSONDecodeError, ValueError):
+                # Если адрес - просто текст, возвращаем пустой словарь
+                return {'raw': self.address}
+        return self.address if isinstance(self.address, dict) else {}
     
     @address_dict.setter
     def address_dict(self, value):

@@ -183,7 +183,7 @@ function setupOpeningHours() {
 
 async function loadPracticeProfile() {
     try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('access_token');
         const response = await fetch('/api/practice/profile', {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -266,7 +266,7 @@ document.getElementById('practice-form').addEventListener('submit', async functi
     };
     
     try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('access_token');
         const response = await fetch('/api/practice/profile', {
             method: 'PUT',
             headers: {
