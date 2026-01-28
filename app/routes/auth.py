@@ -48,9 +48,7 @@ def api_patient_login():
     if not phone:
         return jsonify({'error': 'Telefonnummer erforderlich'}), 400
     
-    # Простая валидация номера телефона (Германия)
-    if not re.match(r'^\+49\d{10,11}$', phone):
-        return jsonify({'error': 'Ungültige Telefonnummer'}), 400
+    # Для разработки - убираем валидацию телефона
     
     # Создаем или находим пациента
     patient = Patient.query.filter_by(phone=phone).first()
@@ -72,25 +70,18 @@ def api_patient_login():
 
 @bp.route('/patient/register', methods=['POST'])
 def api_patient_register():
-    """API: Регистрация пациента с верификацией через Stripe"""
+    """API: Регистрация пациента"""
     data = request.get_json()
-    phone = data.get('phone')
+    phone = data.get('phone', '')
     name = data.get('name', '')
     
-    if not phone:
-        return jsonify({'error': 'Telefonnummer erforderlich'}), 400
+    # Для разработки - убираем все проверки
     
-    # Проверка существования
-    existing = Patient.query.filter_by(phone=phone).first()
-    if existing:
-        return jsonify({'error': 'Telefonnummer bereits registriert'}), 400
-    
-    # Создаем пациента
+    # Создаем пациента (даже если такой телефон уже есть)
     patient = Patient(phone=phone, name=name)
     db.session.add(patient)
     db.session.commit()
     
-    # TODO: Интеграция с Stripe для верификации
     # Для тестирования: считаем верифицированным
     patient.stripe_customer_id = f'test_customer_{patient.id}'
     db.session.commit()
@@ -100,7 +91,7 @@ def api_patient_register():
     refresh_token = create_refresh_token(identity={'id': str(patient.id), 'type': 'patient'})
     
     return jsonify({
-        'message': 'Patient erfolgreich registriert und verifiziert',
+        'message': 'Patient erfolgreich registriert',
         'patient_id': str(patient.id),
         'access_token': access_token,
         'refresh_token': refresh_token
@@ -133,15 +124,17 @@ def api_doctor_login():
 
 @bp.route('/doctor/register', methods=['POST'])
 def api_doctor_register():
-    """API: Регистрация врача с верификацией"""
+    """API: Регистрация врача"""
     data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-    first_name = data.get('first_name')
-    last_name = data.get('last_name')
-    tax_number = data.get('tax_number')
-    speciality = data.get('speciality')
-    practice_id_str = data.get('practice_id')
+    email = data.get('email', '')
+    password = data.get('password', '')
+    first_name = data.get('first_name', '')
+    last_name = data.get('last_name', '')
+    tax_number = data.get('tax_number', '')
+    speciality = data.get('speciality', 'general_practitioner')
+    practice_id_str = data.get('practice_id', '')
+    
+    # Для разработки - убираем все проверки
     
     # Обработка practice_id
     practice_id = None
@@ -149,18 +142,9 @@ def api_doctor_register():
         try:
             practice_id = uuid.UUID(practice_id_str)
         except ValueError:
-            return jsonify({'error': 'Ungültige Praxis-ID'}), 400
+            practice_id = None  # Игнорируем невалидный practice_id
     
-    if not all([email, password, first_name, last_name, speciality]):
-        return jsonify({'error': 'Alle Pflichtfelder erforderlich'}), 400
-    
-    # Проверка существования
-    existing = Doctor.query.filter_by(email=email).first()
-    if existing:
-        return jsonify({'error': 'Email bereits registriert'}), 400
-    
-    # TODO: Верификация tax_number и Handelsregister
-    
+    # Создаем врача (даже если такой email уже есть)
     doctor = Doctor(
         email=email,
         first_name=first_name,
@@ -168,7 +152,7 @@ def api_doctor_register():
         tax_number=tax_number,
         speciality=speciality,
         practice_id=practice_id,
-        is_verified=True  # Для MVP - автоматически верифицируем
+        is_verified=True  # Для разработки - автоматически верифицируем
     )
     doctor.set_password(password)
     
@@ -176,7 +160,7 @@ def api_doctor_register():
     db.session.commit()
     
     return jsonify({
-        'message': 'Arzt erfolgreich registriert. Warten auf Verifizierung.',
+        'message': 'Arzt erfolgreich registriert',
         'doctor_id': str(doctor.id)
     })
 
