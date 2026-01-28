@@ -6,6 +6,7 @@ import os
 import json
 from app import create_app, db
 from app.models import *  # noqa
+from create_test_doctor_data import create_test_doctor_data
 
 # Создаем приложение
 env = os.getenv('FLASK_ENV', 'development')
@@ -131,6 +132,12 @@ def seed_db():
     print(f'   Practice: {test_practice.name}')
     print(f'   Doctor: {test_doctor.name}')
     print(f'   Slots generated: {len(slots)}')
+
+
+@app.cli.command('create-test-doctor')
+def create_test_doctor():
+    """Create test doctor with calendar and slots"""
+    create_test_doctor_data()
 
 
 if __name__ == '__main__':
