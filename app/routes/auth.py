@@ -7,6 +7,7 @@ from app.models import Patient, Doctor
 from app import db
 from app.constants import SPECIALITIES
 import re
+import uuid
 
 bp = Blueprint('auth', __name__)
 auth_web = Blueprint('auth_web', __name__)
@@ -140,7 +141,15 @@ def api_doctor_register():
     last_name = data.get('last_name')
     tax_number = data.get('tax_number')
     speciality = data.get('speciality')
-    practice_id = data.get('practice_id')
+    practice_id_str = data.get('practice_id')
+    
+    # Обработка practice_id
+    practice_id = None
+    if practice_id_str:
+        try:
+            practice_id = uuid.UUID(practice_id_str)
+        except ValueError:
+            return jsonify({'error': 'Ungültige Praxis-ID'}), 400
     
     if not all([email, password, first_name, last_name, speciality]):
         return jsonify({'error': 'Alle Pflichtfelder erforderlich'}), 400
