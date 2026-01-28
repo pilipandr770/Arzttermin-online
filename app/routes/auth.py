@@ -201,18 +201,69 @@ def api_doctor_register():
     
     # Создаем календарь для врача
     from app.models import Calendar
+    import json
+    from datetime import datetime, timedelta
+    from app.models import TimeSlot
+    
+    # Создаем календарь с базовыми настройками
+    working_hours = {
+        'monday': [['09:00', '17:00']],
+        'tuesday': [['09:00', '17:00']],
+        'wednesday': [['09:00', '17:00']],
+        'thursday': [['09:00', '17:00']],
+        'friday': [['09:00', '17:00']],
+        'saturday': [],
+        'sunday': []
+    }
+    
     calendar = Calendar(
         doctor_id=doctor.id,
-        working_hours='{"monday": {"start": "09:00", "end": "17:00"}, "tuesday": {"start": "09:00", "end": "17:00"}, "wednesday": {"start": "09:00", "end": "17:00"}, "thursday": {"start": "09:00", "end": "17:00"}, "friday": {"start": "09:00", "end": "17:00"}}',
+        working_hours=json.dumps(working_hours),
         slot_duration=30,
-        buffer_time=5
+        buffer_time=5,
+        max_advance_booking_days=30,
+        min_advance_booking_hours=24
     )
     db.session.add(calendar)
     db.session.commit()
     
+    # Генерируем слоты на следующие 7 дней
+    today = datetime.utcnow().date()
+    slots_created = 0
+    
+    for day_offset in range(7):
+        current_date = today + timedelta(days=day_offset)
+        
+        # Пропускаем выходные
+        if current_date.weekday() >= 5:  # Saturday = 5, Sunday = 6
+            continue
+        
+        # Генерируем слоты с 9:00 до 17:00
+        current_time = datetime.combine(current_date, datetime.strptime('09:00', '%H:%M').time())
+        end_time = datetime.combine(current_date, datetime.strptime('17:00', '%H:%M').time())
+        
+        while current_time < end_time:
+            slot_end = current_time + timedelta(minutes=30)
+            
+            slot = TimeSlot(
+                calendar_id=calendar.id,
+                start_time=current_time,
+                end_time=slot_end,
+                status='available'
+            )
+            
+            db.session.add(slot)
+            slots_created += 1
+            
+            current_time = slot_end
+    
+    db.session.commit()
+    
     return jsonify({
         'message': 'Arzt erfolgreich registriert',
-        'doctor_id': str(doctor.id)
+        'doctor_id': str(doctor.id),
+        'calendar_created': True,
+        'slots_created': slots_created
     })
 
 
