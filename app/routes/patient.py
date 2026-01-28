@@ -49,11 +49,13 @@ def api_dashboard():
         },
         'active_bookings': [{
             'id': str(booking.id),
+            'booking_code': booking.booking_code,
             'doctor_name': booking.timeslot.calendar.doctor.first_name + ' ' + booking.timeslot.calendar.doctor.last_name if booking.timeslot and booking.timeslot.calendar and booking.timeslot.calendar.doctor else 'Unknown',
             'practice_name': booking.timeslot.calendar.doctor.practice.name if booking.timeslot and booking.timeslot.calendar and booking.timeslot.calendar.doctor and booking.timeslot.calendar.doctor.practice else 'Unknown',
             'date': booking.timeslot.start_time.strftime('%Y-%m-%d') if booking.timeslot else '',
             'time': booking.timeslot.start_time.strftime('%H:%M') if booking.timeslot else '',
-            'status': booking.status
+            'status': booking.status,
+            'cancellable': booking.can_be_cancelled()
         } for booking in active_bookings]
     })
 
@@ -416,3 +418,46 @@ def api_book_slot():
         'date': slot.start_time.strftime('%Y-%m-%d'),
         'time': slot.start_time.strftime('%H:%M')
     })
+
+
+@patient_api.route('/bookings/<booking_id>/cancel', methods=['POST'])
+@jwt_required()
+def api_cancel_booking(booking_id):
+    """API: Отменить бронирование"""
+    identity = get_jwt_identity()
+    if identity.get('type') != 'patient':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    patient = Patient.query.get(uuid.UUID(identity['id']))
+    if not patient:
+        return jsonify({'error': 'Patient not found'}), 404
+    
+    # Находим бронирование
+    booking = Booking.query.filter_by(
+        id=uuid.UUID(booking_id),
+        patient_id=patient.id
+    ).first()
+    
+    if not booking:
+        return jsonify({'error': 'Booking not found'}), 404
+    
+    # Проверяем возможность отмены
+    if not booking.can_be_cancelled():
+        return jsonify({
+            'error': 'Booking cannot be cancelled',
+            'reason': 'Cancellation deadline has passed'
+        }), 400
+    
+    # Получаем данные из запроса
+    data = request.get_json() or {}
+    reason = data.get('reason', '')
+    
+    # Отменяем бронирование
+    if booking.cancel(cancelled_by='patient', reason=reason):
+        return jsonify({
+            'message': 'Booking cancelled successfully',
+            'refund_amount': float(booking.refund_amount),
+            'booking_code': booking.booking_code
+        })
+    else:
+        return jsonify({'error': 'Failed to cancel booking'}), 500

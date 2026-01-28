@@ -174,19 +174,35 @@ class Booking(db.Model):
         
         db.session.commit()
     
-    def needs_reminder(self):
+    def cancel(self, cancelled_by='patient', reason=None):
         """
-        Проверка, нужно ли отправить напоминание
+        Отмена бронирования
+        
+        Args:
+            cancelled_by (str): кто отменяет ('patient' или 'practice')
+            reason (str): причина отмены
         
         Returns:
-            bool: нужно ли напоминание
+            bool: успешно ли отменено
         """
-        if self.status != 'confirmed' or self.reminder_sent:
+        if not self.can_be_cancelled():
             return False
         
-        # Напоминание за 24 часа
-        time_until = self.timeslot.start_time - datetime.utcnow()
-        hours_until = time_until.total_seconds() / 3600
+        # Изменяем статус бронирования
+        self.status = 'cancelled'
+        self.cancelled_at = datetime.utcnow()
+        self.cancelled_by = cancelled_by
+        self.cancellation_reason = reason
         
-        # Окно для отправки: 24h ± 15 минут
-        return 23.75 <= hours_until <= 24.25
+        # Рассчитываем возврат
+        self.refund_amount = self.calculate_refund_amount()
+        
+        # Возвращаем слот в доступные
+        if self.timeslot:
+            self.timeslot.status = 'available'
+        
+        # Обновляем статистику пациента (опционально уменьшаем счетчик)
+        # self.patient.total_bookings -= 1  # Можно раскомментировать если нужно
+        
+        db.session.commit()
+        return True

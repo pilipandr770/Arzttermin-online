@@ -3,11 +3,12 @@
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
-from app.models import Patient, Doctor
+from app.models import Patient, Doctor, Practice
 from app import db
 from app.constants import SPECIALITIES
 import re
 import uuid
+from datetime import datetime
 
 bp = Blueprint('auth', __name__)
 auth_web = Blueprint('auth_web', __name__)
@@ -122,6 +123,38 @@ def api_doctor_login():
     })
 
 
+@bp.route('/practice/register', methods=['POST'])
+def api_practice_register():
+    """API: Регистрация практики"""
+    data = request.get_json()
+    name = data.get('name', '')
+    vat_number = data.get('vat_number', '')
+    owner_email = data.get('owner_email', '')
+    phone = data.get('phone', '')
+    address = data.get('address', '')
+    
+    # Для разработки - убираем все проверки
+    
+    # Создаем практику
+    practice = Practice(
+        name=name,
+        vat_number=vat_number,
+        owner_email=owner_email,
+        phone=phone,
+        address=address,
+        verified=True,  # Для разработки - автоматически верифицируем
+        verified_at=datetime.utcnow()
+    )
+    
+    db.session.add(practice)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Praxis erfolgreich registriert',
+        'practice_id': str(practice.id)
+    })
+
+
 @bp.route('/doctor/register', methods=['POST'])
 def api_doctor_register():
     """API: Регистрация врача"""
@@ -134,15 +167,22 @@ def api_doctor_register():
     speciality = data.get('speciality', 'general_practitioner')
     practice_id_str = data.get('practice_id', '')
     
-    # Для разработки - убираем все проверки
+    # Для разработки - убираем все проверки, кроме основных полей
+    if not email or not password or not first_name or not last_name:
+        return jsonify({'error': 'Email, Passwort, Vorname und Nachname erforderlich'}), 400
     
-    # Обработка practice_id
     practice_id = None
     if practice_id_str:
+        # Обработка practice_id если предоставлен
         try:
             practice_id = uuid.UUID(practice_id_str)
         except ValueError:
-            practice_id = None  # Игнорируем невалидный practice_id
+            return jsonify({'error': 'Invalid Practice ID'}), 400
+        
+        # Проверяем, существует ли практика
+        practice = Practice.query.get(practice_id)
+        if not practice:
+            return jsonify({'error': 'Practice not found'}), 404
     
     # Создаем врача (даже если такой email уже есть)
     doctor = Doctor(
@@ -157,6 +197,17 @@ def api_doctor_register():
     doctor.set_password(password)
     
     db.session.add(doctor)
+    db.session.commit()
+    
+    # Создаем календарь для врача
+    from app.models import Calendar
+    calendar = Calendar(
+        doctor_id=doctor.id,
+        working_hours='{"monday": {"start": "09:00", "end": "17:00"}, "tuesday": {"start": "09:00", "end": "17:00"}, "wednesday": {"start": "09:00", "end": "17:00"}, "thursday": {"start": "09:00", "end": "17:00"}, "friday": {"start": "09:00", "end": "17:00"}}',
+        slot_duration=30,
+        buffer_time=5
+    )
+    db.session.add(calendar)
     db.session.commit()
     
     return jsonify({
