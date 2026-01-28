@@ -1,0 +1,183 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Meine Termine" %}
+{% set user_type = "patient" %}
+
+{% block dashboard_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div id="loading" class="text-center py-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Lade Termine...</p>
+            </div>
+            
+            <div id="bookings-content" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Meine Termine</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="bookings-table-container">
+                            <!-- Таблица будет загружена через JS -->
+                        </div>
+                        <div id="no-bookings" style="display: none;">
+                            <div class="text-center py-5">
+                                <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+                                <p class="text-muted mt-3">Sie haben noch keine Termine gebucht.</p>
+                                <a href="{{ url_for('patient_web.search') }}" class="btn btn-primary">
+                                    <i class="bi bi-search"></i> Arzt suchen
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadBookings();
+});
+
+async function loadBookings() {
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+        window.location.href = '/auth/patient/login';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/patient/bookings', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            if (data.bookings && data.bookings.length > 0) {
+                renderBookingsTable(data.bookings);
+            } else {
+                document.getElementById('no-bookings').style.display = 'block';
+            }
+            
+            // Показываем контент
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('bookings-content').style.display = 'block';
+        } else if (response.status === 401) {
+            // Токен истек или недействителен
+            localStorage.removeItem('access_token');
+            window.location.href = '/auth/patient/login';
+        } else {
+            throw new Error('Failed to load bookings');
+        }
+    } catch (error) {
+        console.error('Error loading bookings:', error);
+        document.getElementById('loading').innerHTML = `
+            <div class="alert alert-danger">
+                <h6>Fehler beim Laden der Termine</h6>
+                <p>Bitte versuchen Sie es später erneut.</p>
+                <a href="{{ url_for('patient_web.dashboard') }}" class="btn btn-primary">Zurück zum Dashboard</a>
+            </div>
+        `;
+    }
+}
+
+function renderBookingsTable(bookings) {
+    const container = document.getElementById('bookings-table-container');
+    
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Datum & Zeit</th>
+                        <th>Arzt</th>
+                        <th>Fachgebiet</th>
+                        <th>Status</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    bookings.forEach(booking => {
+        let statusBadge = '';
+        let statusText = '';
+        
+        switch(booking.status) {
+            case 'confirmed':
+                statusBadge = 'bg-success';
+                statusText = 'Bestätigt';
+                break;
+            case 'cancelled':
+                statusBadge = 'bg-danger';
+                statusText = 'Storniert';
+                break;
+            case 'completed':
+                statusBadge = 'bg-info';
+                statusText = 'Abgeschlossen';
+                break;
+            default:
+                statusBadge = 'bg-secondary';
+                statusText = booking.status;
+        }
+        
+        html += `
+            <tr>
+                <td>${booking.date ? formatDateTime(booking.date, booking.time) : 'Unbekannt'}</td>
+                <td>${booking.doctor_name}</td>
+                <td>${booking.speciality}</td>
+                <td>
+                    <span class="badge ${statusBadge}">${statusText}</span>
+                </td>
+                <td>
+                    ${booking.status === 'confirmed' ? 
+                        `<button class="btn btn-sm btn-outline-danger" onclick="cancelBooking('${booking.id}')">
+                            <i class="bi bi-x-circle"></i> Stornieren
+                        </button>` : 
+                        ''
+                    }
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+function formatDateTime(date, time) {
+    if (!date || !time) return 'Unbekannt';
+    
+    const dateObj = new Date(`${date}T${time}`);
+    return dateObj.toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function cancelBooking(bookingId) {
+    if (confirm('Sind Sie sicher, dass Sie diesen Termin stornieren möchten?')) {
+        // В MVP отмена не реализована
+        alert('Terminabsage ist in dieser Version nicht verfügbar.');
+    }
+}
+</script>
+{% endblock %}

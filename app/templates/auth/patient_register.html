@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">Patient Registrierung</h3>
+                </div>
+                <div class="card-body">
+                    <form id="patient-register-form">
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Telefonnummer *</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="+491234567890" required>
+                            <div class="form-text">Deutsche Telefonnummer mit +49</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name (optional)</label>
+                            <input type="text" class="form-control" id="name" name="name" placeholder="Ihr Name">
+                        </div>
+                        <div class="alert alert-info">
+                            <strong>Verifizierung:</strong> Für die Registrierung wird eine einmalige Gebühr von 1€ über Stripe erhoben, die bei erfolgreicher Verifizierung zurückerstattet wird.
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Registrieren & Verifizieren</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('patient-register-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const phone = document.getElementById('phone').value;
+    const name = document.getElementById('name').value;
+    
+    try {
+        const response = await fetch('/api/auth/patient/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ phone: phone, name: name })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Registrierung erfolgreich! Sie werden zur Verifizierung weitergeleitet.');
+            // TODO: Интеграция с Stripe для оплаты верификации
+            window.location.href = '/patient/dashboard';
+        } else {
+            alert(data.error || 'Fehler bei der Registrierung');
+        }
+    } catch (error) {
+        alert('Netzwerkfehler');
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,274 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Zeitplan einstellen" %}
+{% set user_type = "doctor" %}
+
+{% block dashboard_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div id="loading" class="text-center py-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Lade Einstellungen...</p>
+            </div>
+
+            <div id="settings-content" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Zeitplan einstellen</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="schedule-settings-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Dauer eines Termins (Minuten)</label>
+                                        <select class="form-control" id="slot-duration" name="slot_duration_minutes" required>
+                                            <option value="15">15 Minuten</option>
+                                            <option value="20">20 Minuten</option>
+                                            <option value="30" selected>30 Minuten</option>
+                                            <option value="45">45 Minuten</option>
+                                            <option value="60">60 Minuten</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Arbeitsbeginn</label>
+                                        <input type="time" class="form-control" id="work-start-time" name="work_start_time" value="09:00" required>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Arbeitsende</label>
+                                        <input type="time" class="form-control" id="work-end-time" name="work_end_time" value="17:00" required>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Arbeitstage</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input work-day" type="checkbox" id="monday" value="monday" checked>
+                                            <label class="form-check-label" for="monday">Montag</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input work-day" type="checkbox" id="tuesday" value="tuesday" checked>
+                                            <label class="form-check-label" for="tuesday">Dienstag</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input work-day" type="checkbox" id="wednesday" value="wednesday" checked>
+                                            <label class="form-check-label" for="wednesday">Mittwoch</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input work-day" type="checkbox" id="thursday" value="thursday" checked>
+                                            <label class="form-check-label" for="thursday">Donnerstag</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input work-day" type="checkbox" id="friday" value="friday" checked>
+                                            <label class="form-check-label" for="friday">Freitag</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input work-day" type="checkbox" id="saturday" value="saturday">
+                                            <label class="form-check-label" for="saturday">Samstag</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input work-day" type="checkbox" id="sunday" value="sunday">
+                                            <label class="form-check-label" for="sunday">Sonntag</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Einstellungen speichern
+                                </button>
+                                <button type="button" class="btn btn-secondary ms-2" onclick="generateSlots()">
+                                    <i class="bi bi-calendar-plus"></i> Termine für nächste Woche generieren
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Предпросмотр сгенерированных терминов -->
+                <div id="preview-section" class="card mt-4" style="display: none;">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Vorschau der generierten Termine</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="preview-content">
+                            <!-- Предпросмотр будет загружен здесь -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadScheduleSettings();
+});
+
+async function loadScheduleSettings() {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        window.location.href = '/doctor/login';
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/doctors/profile', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+
+            // Заполняем форму настройками
+            const settings = data.doctor.schedule_settings || {};
+            document.getElementById('slot-duration').value = settings.slot_duration_minutes || 30;
+            document.getElementById('work-start-time').value = settings.work_start_time || '09:00';
+            document.getElementById('work-end-time').value = settings.work_end_time || '17:00';
+
+            // Отмечаем рабочие дни
+            const workDays = settings.work_days || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+            workDays.forEach(day => {
+                const checkbox = document.getElementById(day);
+                if (checkbox) checkbox.checked = true;
+            });
+
+            // Показываем контент
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('settings-content').style.display = 'block';
+
+        } else if (response.status === 401 || response.status === 404) {
+            // Токен истек или недействителен, или пользователь не найден
+            localStorage.removeItem('access_token');
+            window.location.href = '/doctor/login';
+        } else {
+            throw new Error('Failed to load settings');
+        }
+    } catch (error) {
+        console.error('Error loading schedule settings:', error);
+        document.getElementById('loading').innerHTML = `
+            <div class="alert alert-danger">
+                <h6>Fehler beim Laden der Einstellungen</h6>
+                <p>Bitte versuchen Sie es später erneut.</p>
+                <a href="{{ url_for('doctor_web.dashboard') }}" class="btn btn-primary">Zurück zum Dashboard</a>
+            </div>
+        `;
+    }
+}
+
+document.getElementById('schedule-settings-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const token = localStorage.getItem('access_token');
+
+    // Собираем рабочие дни
+    const workDays = [];
+    document.querySelectorAll('.work-day:checked').forEach(checkbox => {
+        workDays.push(checkbox.value);
+    });
+
+    const settings = {
+        slot_duration_minutes: parseInt(document.getElementById('slot-duration').value),
+        work_days: workDays,
+        work_start_time: document.getElementById('work-start-time').value,
+        work_end_time: document.getElementById('work-end-time').value
+    };
+
+    try {
+        const response = await fetch('/api/doctors/schedule-settings', {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(settings)
+        });
+
+        if (response.ok) {
+            alert('Einstellungen erfolgreich gespeichert!');
+        } else {
+            throw new Error('Failed to save settings');
+        }
+    } catch (error) {
+        console.error('Error saving schedule settings:', error);
+        alert('Fehler beim Speichern der Einstellungen.');
+    }
+});
+
+async function generateSlots() {
+    const token = localStorage.getItem('access_token');
+
+    try {
+        const response = await fetch('/api/doctors/calendar/generate-slots', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ weeks_ahead: 1 })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            showPreview(data.generated_slots);
+            alert(`${data.generated_slots.length} Termine wurden generiert!`);
+        } else {
+            const error = await response.json();
+            alert('Fehler: ' + error.error);
+        }
+    } catch (error) {
+        console.error('Error generating slots:', error);
+        alert('Fehler beim Generieren der Termine.');
+    }
+}
+
+function showPreview(slots) {
+    const container = document.getElementById('preview-content');
+    container.innerHTML = '';
+
+    if (slots.length === 0) {
+        container.innerHTML = '<p class="text-muted">Keine Termine generiert.</p>';
+        return;
+    }
+
+    // Группируем по дням
+    const grouped = {};
+    slots.forEach(slot => {
+        const date = new Date(slot.start_time).toLocaleDateString('de-DE');
+        if (!grouped[date]) grouped[date] = [];
+        grouped[date].push(slot);
+    });
+
+    Object.entries(grouped).forEach(([date, daySlots]) => {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'mb-3';
+        dayDiv.innerHTML = `
+            <h6>${date} (${daySlots.length} Termine)</h6>
+            <div class="row">
+                ${daySlots.slice(0, 6).map(slot => `
+                    <div class="col-md-2 mb-2">
+                        <small class="badge bg-light text-dark">${new Date(slot.start_time).toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'})}</small>
+                    </div>
+                `).join('')}
+                ${daySlots.length > 6 ? '<div class="col-md-2 mb-2"><small class="text-muted">...</small></div>' : ''}
+            </div>
+        `;
+        container.appendChild(dayDiv);
+    });
+
+    document.getElementById('preview-section').style.display = 'block';
+}
+</script>
+{% endblock %}

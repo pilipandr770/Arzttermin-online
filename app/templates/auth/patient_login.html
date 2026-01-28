@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">Patient Anmeldung</h3>
+                </div>
+                <div class="card-body">
+                    <form id="patient-login-form">
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Telefonnummer</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="+491234567890" required>
+                            <div class="form-text">Deutsche Telefonnummer mit +49</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Anmelden</button>
+                    </form>
+                    <hr>
+                    <p class="text-center">Noch kein Konto? <a href="{{ url_for('auth_web.patient_register') }}">Registrieren</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('patient-login-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const phone = document.getElementById('phone').value;
+    
+    try {
+        const response = await fetch('/api/auth/patient/login?v=' + Date.now(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ phone: phone })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('patient_id', data.patient_id);
+            window.location.href = '/patient/dashboard';
+        } else {
+            alert(data.error || 'Fehler bei der Anmeldung');
+        }
+    } catch (error) {
+        alert('Netzwerkfehler');
+    }
+});
+</script>
+{% endblock %}

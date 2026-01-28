@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" id="sidebar">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('patient_web.dashboard') if user_type == 'patient' else url_for('doctor_web.dashboard') }}">
+                            <i class="bi bi-house-door"></i> Dashboard
+                        </a>
+                    </li>
+                    {% if user_type == 'patient' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('patient_web.bookings') }}">
+                            <i class="bi bi-calendar-check"></i> Meine Termine
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('patient_web.calendar') }}">
+                            <i class="bi bi-calendar"></i> Kalender
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('patient_web.profile') }}">
+                            <i class="bi bi-person"></i> Profil
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('doctor_web.calendar') }}">
+                            <i class="bi bi-calendar"></i> Kalender
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('doctor_web.bookings') }}">
+                            <i class="bi bi-calendar-check"></i> Termine
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('doctor_web.profile') }}">
+                            <i class="bi bi-person"></i> Profil
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item mt-3">
+                        <a class="nav-link text-danger" href="#" onclick="logout()">
+                            <i class="bi bi-box-arrow-right"></i> Abmelden
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">{{ title }}</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        {% block toolbar %}{% endblock %}
+                    </div>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="alert alert-info">
+                {% for message in messages %}
+                <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            {% block dashboard_content %}{% endblock %}
+        </main>
+    </div>
+</div>
+
+<script>
+function logout() {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user_type');
+    window.location.href = '/';
+}
+</script>
+{% endblock %}
+
+{% block scripts %}
+{% block dashboard_scripts %}{% endblock %}
+{% endblock %}

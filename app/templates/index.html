@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero bg-primary text-white py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8">
+                <h1 class="display-4 fw-bold">TerminFinder</h1>
+                <p class="lead">KI-gestützte Terminbuchung für Ärzte in Deutschland</p>
+                <p class="mb-4">Intelligente System mit automatischen Benachrichtigungen, Stripe-Zahlungen und No-Show-Schutz.</p>
+                <a href="#user-type" class="btn btn-light btn-lg">Jetzt starten</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="about" class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-6">
+                <h2>Über TerminFinder</h2>
+                <p>TerminFinder revolutioniert die Terminbuchung bei Ärzten in Deutschland. Unser KI-Assistent hilft Patienten, schnell freie Termine zu finden und zu buchen, während Ärzte ihre Zeit effizient verwalten können.</p>
+                <ul class="list-unstyled">
+                    <li>✅ Automatische Benachrichtigungen über freie Termine</li>
+                    <li>✅ Sichere Zahlungen mit Stripe</li>
+                    <li>✅ Schutz vor No-Show durch Kaution</li>
+                    <li>✅ Einfache Verwaltung für Ärzte</li>
+                </ul>
+            </div>
+            <div class="col-lg-6">
+                <img src="{{ url_for('static', filename='images/doctor-patient.jpg') }}" alt="Arzt und Patient" class="img-fluid rounded">
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="how-it-works" class="bg-light py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Wie es funktioniert</h2>
+        <div class="row">
+            <div class="col-md-4 text-center">
+                <div class="mb-3">
+                    <span class="badge bg-primary fs-1">1</span>
+                </div>
+                <h4>Registrieren</h4>
+                <p>Wählen Sie Ihren Benutzertyp: Arzt oder Patient</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="mb-3">
+                    <span class="badge bg-primary fs-1">2</span>
+                </div>
+                <h4>Termine finden</h4>
+                <p>Patienten suchen nach verfügbaren Terminen in ihrer Stadt</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="mb-3">
+                    <span class="badge bg-primary fs-1">3</span>
+                </div>
+                <h4>Buchen & Bezahlen</h4>
+                <p>Sichere Buchung mit Kaution über Stripe</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="user-type" class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Wählen Sie Ihren Benutzertyp</h2>
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Für Patienten</h5>
+                        <p class="card-text">Finden Sie schnell freie Termine bei Ärzten in Ihrer Nähe. Einfache Registrierung mit Verifizierung.</p>
+                        <a href="{{ url_for('auth_web.patient_login') }}" class="btn btn-primary">Als Patient anmelden</a>
+                        <br><small class="text-muted">Oder <a href="{{ url_for('auth_web.patient_register') }}">registrieren</a></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Für Ärzte</h5>
+                        <p class="card-text">Verwalten Sie Ihre Termine effizient. Vollständige Verifizierung erforderlich.</p>
+                        <a href="{{ url_for('auth_web.doctor_login') }}" class="btn btn-success">Als Arzt anmelden</a>
+                        <br><small class="text-muted">Oder <a href="{{ url_for('auth_web.doctor_register') }}">registrieren</a></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

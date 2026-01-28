@@ -1,0 +1,114 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Kalender verwalten" %}
+{% set user_type = "doctor" %}
+
+{% block dashboard_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Kalender verwalten - ТЕСТИРОВАНИЕ</h5>
+                </div>
+                <div class="card-body">
+                    <div id="calendar-container">
+                        <div class="alert alert-info">Загрузка...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+console.log('=== CALENDAR TEST SCRIPT LOADED ===');
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== PAGE LOADED, TESTING API ===');
+
+    const container = document.getElementById('calendar-container');
+    if (!container) {
+        console.error('Container not found!');
+        return;
+    }
+
+    // Проверяем токен
+    const token = localStorage.getItem('access_token');
+    console.log('Token present:', !!token);
+
+    if (!token) {
+        container.innerHTML = '<div class="alert alert-danger">Не авторизован! Перейдите на страницу логина.</div>';
+        return;
+    }
+
+    container.innerHTML = '<div class="alert alert-info">Тестируем API...</div>';
+
+    // Тестируем API
+    testCalendarAPI(token);
+});
+
+async function testCalendarAPI(token) {
+    const container = document.getElementById('calendar-container');
+
+    try {
+        console.log('Making API call...');
+        const response = await fetch('/api/doctors/calendar/slots?start_date=2026-01-28&end_date=2026-01-28', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('Response status:', response.status);
+
+        if (response.ok) {
+            const data = await response.json();
+            console.log('API data:', data);
+
+            const slots = data.slots || [];
+            console.log('Slots found:', slots.length);
+
+            // Показываем результат
+            let html = `<div class="alert alert-success">УСПЕХ! API вернул ${slots.length} слотов.</div>`;
+            html += '<div class="row">';
+
+            slots.forEach(slot => {
+                const isBooked = slot.status === 'booked';
+                const statusClass = isBooked ? 'border-primary bg-primary bg-opacity-10' : 'border-success';
+                const statusText = isBooked ? 'Gebucht' : 'Verfügbar';
+                const time = new Date(slot.start_time).toLocaleTimeString('de-DE', {hour: '2-digit', minute: '2-digit'});
+
+                console.log(`Slot: ${time}, Status: ${slot.status}`);
+
+                html += `
+                    <div class="col-md-4 mb-3">
+                        <div class="card ${statusClass}">
+                            <div class="card-body">
+                                <h6 class="card-title">${time}</h6>
+                                <p class="card-text">
+                                    <span class="badge ${isBooked ? 'bg-primary' : 'bg-success'}">
+                                        ${isBooked ? '<i class="bi bi-person-check"></i> ' : ''}${statusText}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+
+        } else {
+            const error = await response.text();
+            console.error('API Error:', error);
+            container.innerHTML = `<div class="alert alert-danger">API Ошибка: ${response.status} - ${error}</div>`;
+        }
+
+    } catch (error) {
+        console.error('Network error:', error);
+        container.innerHTML = `<div class="alert alert-danger">Сетевая ошибка: ${error.message}</div>`;
+    }
+}
+</script>
+{% endblock %}

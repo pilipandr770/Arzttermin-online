@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TerminFinder - Intelligente Terminbuchung für Ärzte</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="#">TerminFinder</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="#about">Über uns</a>
+                <a class="nav-link" href="#how-it-works">Wie es funktioniert</a>
+                <a class="nav-link" href="#login">Anmelden</a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-light py-4 mt-5">
+        <div class="container text-center">
+            <p>&copy; 2024 TerminFinder. Alle Rechte vorbehalten.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v={{ config['VERSION'] or '1.0' }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

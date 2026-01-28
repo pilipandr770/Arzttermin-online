@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">Arzt Anmeldung</h3>
+                </div>
+                <div class="card-body">
+                    <form id="doctor-login-form">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">E-Mail</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Passwort</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Anmelden</button>
+                    </form>
+                    <hr>
+                    <p class="text-center">Noch kein Konto? <a href="{{ url_for('auth_web.doctor_register') }}">Registrieren</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('doctor-login-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    try {
+        const response = await fetch('/api/auth/doctor/login?v=' + Date.now(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: email, password: password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('doctor_id', data.doctor_id);
+            window.location.href = '/doctor/dashboard';
+        } else {
+            alert(data.error || 'Fehler bei der Anmeldung');
+        }
+    } catch (error) {
+        alert('Netzwerkfehler');
+    }
+});
+</script>
+{% endblock %}

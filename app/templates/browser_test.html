@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser Test - TerminFinder</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">🌐 Browser Storage Test</h5>
+                        <p class="mb-0">Testing localStorage access with local Bootstrap files</p>
+                    </div>
+                    <div class="card-body">
+                        <div id="results" class="mb-3">
+                        <div class="alert alert-info">
+                            <h6>🔍 Диагностика проблем с отображением терминов</h6>
+                            <p>Эта страница поможет определить, почему термины не отображаются у доктора.</p>
+                            <p><strong>Возможные причины:</strong></p>
+                            <ul>
+                                <li>Блокировка localStorage браузером</li>
+                                <li>Проблемы с аутентификацией</li>
+                                <li>Ошибки в JavaScript коде</li>
+                            </ul>
+                        </div>
+
+                        <div class="mb-3">
+                            <button id="testLocalStorage" class="btn btn-primary me-2">Test localStorage</button>
+                            <button id="testLogin" class="btn btn-success me-2">Test Doctor Login</button>
+                            <button id="testCalendar" class="btn btn-info me-2">Test Calendar Load</button>
+                            <button id="testFullFlow" class="btn btn-warning">🔧 Полная диагностика</button>
+                        </div>
+
+                        <div id="login-section" class="mb-3" style="display: none;">
+                            <h6>Doctor Login</h6>
+                            <div class="mb-2">
+                                <input type="email" id="email" class="form-control" placeholder="Email" value="doctor@test.com">
+                            </div>
+                            <div class="mb-2">
+                                <input type="password" id="password" class="form-control" placeholder="Password" value="password123">
+                            </div>
+                            <button id="loginBtn" class="btn btn-success">Login</button>
+                        </div>
+
+                        <div id="calendar-section" style="display: none;">
+                            <h6>Calendar Data</h6>
+                            <div id="calendar-data"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = null;
+
+        // Test localStorage access
+        function testLocalStorage() {
+            const results = document.getElementById('results');
+            try {
+                localStorage.setItem('test', 'working');
+                const value = localStorage.getItem('test');
+                localStorage.removeItem('test');
+
+                if (value === 'working') {
+                    results.innerHTML = '<div class="alert alert-success">✅ localStorage работает корректно</div>';
+                    return true;
+                } else {
+                    results.innerHTML = '<div class="alert alert-warning">⚠️ localStorage доступен, но данные не сохраняются</div>';
+                    return false;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="alert alert-danger">❌ localStorage заблокирован: ${error.message}</div>`;
+                return false;
+            }
+        }
+
+        // Test doctor login
+        async function testLogin() {
+            const results = document.getElementById('results');
+            const loginSection = document.getElementById('login-section');
+
+            try {
+                const response = await fetch('/api/auth/doctor/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'doctor@test.com',
+                        password: 'password123'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.access_token;
+
+                    // Try to save token to localStorage
+                    try {
+                        localStorage.setItem('auth_token', authToken);
+                        results.innerHTML = '<div class="alert alert-success">✅ Вход успешен, токен сохранен в localStorage</div>';
+                        document.getElementById('calendar-section').style.display = 'block';
+                    } catch (storageError) {
+                        results.innerHTML = `<div class="alert alert-warning">✅ Вход успешен, но localStorage заблокирован: ${storageError.message}</div>`;
+                        document.getElementById('calendar-section').style.display = 'block';
+                    }
+                } else {
+                    const error = await response.text();
+                    results.innerHTML = `<div class="alert alert-danger">❌ Ошибка входа: ${error}</div>`;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="alert alert-danger">❌ Ошибка сети: ${error.message}</div>`;
+            }
+        }
+
+        // Test calendar loading
+        async function testCalendar() {
+            const results = document.getElementById('results');
+            const calendarData = document.getElementById('calendar-data');
+
+            if (!authToken) {
+                // Try to get token from localStorage
+                try {
+                    authToken = localStorage.getItem('auth_token');
+                } catch (error) {
+                    results.innerHTML = `<div class="alert alert-danger">❌ Нет токена аутентификации: ${error.message}</div>`;
+                    return;
+                }
+            }
+
+            if (!authToken) {
+                results.innerHTML = '<div class="alert alert-danger">❌ Нет токена аутентификации</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/doctors/calendar/slots?start_date=2026-01-28&end_date=2026-01-28', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const slots = data.slots || [];
+
+                    // Count statuses
+                    const statusCounts = {};
+                    slots.forEach(slot => {
+                        statusCounts[slot.status] = (statusCounts[slot.status] || 0) + 1;
+                    });
+
+                    calendarData.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>✅ Календарь загружен успешно!</strong><br>
+                            Всего слотов: ${slots.length}<br>
+                            Доступных: ${statusCounts.available || 0}<br>
+                            Забронированных: ${statusCounts.booked || 0}
+                        </div>
+                        <div class="mt-3">
+                            <h6>Примеры слотов:</h6>
+                            <pre>${JSON.stringify(slots.slice(0, 3), null, 2)}</pre>
+                        </div>
+                    `;
+
+                    results.innerHTML = '<div class="alert alert-success">✅ Календарь загружен успешно</div>';
+                } else {
+                    const error = await response.text();
+                    results.innerHTML = `<div class="alert alert-danger">❌ Ошибка загрузки календаря: ${error}</div>`;
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="alert alert-danger">❌ Ошибка сети: ${error.message}</div>`;
+            }
+        }
+
+        // Full diagnostic flow
+        async function testFullFlow() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="alert alert-info">🚀 Запуск полной диагностики...</div>';
+
+            // Step 1: Test localStorage
+            results.innerHTML += '<div class="mt-2"><strong>Шаг 1:</strong> Проверка localStorage...</div>';
+            const localStorageOk = testLocalStorage();
+            if (!localStorageOk) {
+                results.innerHTML += `
+                    <div class="alert alert-danger mt-2">
+                        <strong>❌ localStorage заблокирован!</strong><br>
+                        Это основная причина, почему термины не отображаются.<br>
+                        <strong>Решение:</strong>
+                        <ol>
+                            <li>Нажмите на 🔒 в адресной строке браузера</li>
+                            <li>Выберите "Cookies and site data" → "Allow"</li>
+                            <li>Или откройте сайт в режиме инкогнито</li>
+                            <li>Перезагрузите страницу</li>
+                        </ol>
+                    </div>
+                `;
+                return;
+            }
+
+            // Step 2: Test login
+            results.innerHTML += '<div class="mt-2"><strong>Шаг 2:</strong> Тестирование входа...</div>';
+            await testLogin();
+            if (!authToken) {
+                results.innerHTML += '<div class="alert alert-danger mt-2">❌ Вход не удался</div>';
+                return;
+            }
+
+            // Step 3: Test calendar loading
+            results.innerHTML += '<div class="mt-2"><strong>Шаг 3:</strong> Загрузка календаря...</div>';
+            await testCalendar();
+
+            // Step 4: Summary
+            results.innerHTML += `
+                <div class="alert alert-success mt-3">
+                    <strong>✅ Диагностика завершена!</strong><br>
+                    Если все шаги прошли успешно, термины должны отображаться.<br>
+                    Попробуйте перейти на <a href="/doctor/calendar" target="_blank">страницу календаря</a>
+                </div>
+            `;
+        }
+
+        // Event listeners
+        document.getElementById('testLocalStorage').addEventListener('click', testLocalStorage);
+        document.getElementById('testLogin').addEventListener('click', testLogin);
+        document.getElementById('testCalendar').addEventListener('click', testCalendar);
+        document.getElementById('testFullFlow').addEventListener('click', testFullFlow);
+
+        // Auto-run localStorage test on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            testLocalStorage();
+        });
+    </script>
+</body>
+</html>

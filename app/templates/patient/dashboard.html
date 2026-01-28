@@ -1,0 +1,333 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Patienten Dashboard" %}
+{% set user_type = "patient" %}
+
+{% block dashboard_content %}
+<div id="loading" class="text-center py-5">
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Lade Dashboard...</p>
+</div>
+
+<div id="dashboard-content" style="display: none;">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Willkommen, <span id="patient-name">Patient</span>!</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Hier können Sie Termine bei Ärzten suchen und buchen.</p>
+
+                    <!-- Быстрый доступ к поиску -->
+                    <div class="mb-4">
+                        <h6>Termin finden</h6>
+                        <p class="text-muted">Suchen Sie nach verfügbaren Terminen bei Ärzten in Ihrer Nähe.</p>
+                        <a href="{{ url_for('patient_web.search') }}" class="btn btn-primary">
+                            <i class="bi bi-search"></i> Arzt suchen
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Обзор доступных терминов -->
+            <div id="available-slots-overview" class="card mt-4" style="display: none;">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Verfügbare Termine</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Übersicht der verfügbaren Termine in den nächsten 7 Tagen:</p>
+                    <div id="specialities-overview" class="row">
+                        <!-- Специальности будут загружены через JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Алерты -->
+            <div id="alerts-section" class="card mt-4" style="display: none;">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Meine Benachrichtigungen</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Sie erhalten Benachrichtigungen, wenn neue Termine verfügbar werden.</p>
+                    <div id="alerts-list" class="list-group list-group-flush">
+                        <!-- Алерты будут загружены через JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Предстоящие приемы -->
+            <div id="bookings-section" class="card mt-4" style="display: none;">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Ihre nächsten Termine</h5>
+                </div>
+                <div class="card-body">
+                    <div id="bookings-list" class="list-group list-group-flush">
+                        <!-- Бронирования будут загружены через JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+        <!-- Статистика -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Ihre Statistik</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="h4 text-primary" id="total-bookings">0</div>
+                        <small class="text-muted">Termine</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="h4 text-success" id="attended-count">0</div>
+                        <small class="text-muted">Besucht</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Быстрые действия -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Schnellzugriff</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('patient_web.bookings') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-calendar-check"></i> Alle Termine
+                    </a>
+                    <a href="{{ url_for('patient_web.profile') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-person"></i> Profil bearbeiten
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboard();
+});
+
+async function loadDashboard() {
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+        // Нет токена - перенаправляем на вход
+        window.location.href = '/auth/patient/login';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/patient/dashboard', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Обновляем имя пациента
+            document.getElementById('patient-name').textContent = data.patient.name || 'Patient';
+            
+            // Обновляем статистику
+            document.getElementById('total-bookings').textContent = data.patient.total_bookings || 0;
+            document.getElementById('attended-count').textContent = data.patient.attended_appointments || 0;
+            
+            // Показываем бронирования
+            if (data.active_bookings && data.active_bookings.length > 0) {
+                const bookingsList = document.getElementById('bookings-list');
+                bookingsList.innerHTML = '';
+                
+                data.active_bookings.forEach(booking => {
+                    const bookingItem = document.createElement('div');
+                    bookingItem.className = 'list-group-item';
+                    bookingItem.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${booking.doctor_name}</h6>
+                            <small class="text-muted">${booking.date} ${booking.time}</small>
+                        </div>
+                        <p class="mb-1">${booking.practice_name}</p>
+                        <small class="text-${booking.status === 'confirmed' ? 'success' : 'warning'}">
+                            ${booking.status === 'confirmed' ? 'Bestätigt' : 'Ausstehend'}
+                        </small>
+                    `;
+                    bookingsList.appendChild(bookingItem);
+                });
+                
+                document.getElementById('bookings-section').style.display = 'block';
+            }
+            
+            // Загружаем обзор доступных терминов
+            await loadAvailableSlotsOverview();
+            
+            // Загружаем алерты
+            await loadAlerts();
+            
+            // Показываем контент
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard-content').style.display = 'block';
+            
+        } else if (response.status === 401) {
+            // Токен истек или недействителен
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('patient_id');
+            window.location.href = '/auth/patient/login';
+        } else {
+            throw new Error('Failed to load dashboard');
+        }
+        
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        document.getElementById('loading').innerHTML = `
+            <div class="alert alert-danger">
+                <h6>Fehler beim Laden des Dashboards</h6>
+                <p>Bitte versuchen Sie es später erneut.</p>
+                <button class="btn btn-primary" onclick="window.location.reload()">Erneut versuchen</button>
+            </div>
+        `;
+    }
+}
+
+async function loadAlerts() {
+    try {
+        const response = await fetch('/api/patient/alerts', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.alerts && data.alerts.length > 0) {
+                const alertsList = document.getElementById('alerts-list');
+                alertsList.innerHTML = '';
+                
+                data.alerts.forEach(alert => {
+                    const alertItem = document.createElement('div');
+                    alertItem.className = 'list-group-item';
+                    alertItem.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${alert.doctor_name}</h6>
+                            <small class="text-muted">${alert.speciality}</small>
+                        </div>
+                        <p class="mb-1">Benachrichtigung aktiv</p>
+                        <small class="text-primary">
+                            <button class="btn btn-sm btn-outline-danger" onclick="removeAlert('${alert.id}')">
+                                Entfernen
+                            </button>
+                        </small>
+                    `;
+                    alertsList.appendChild(alertItem);
+                });
+                
+                document.getElementById('alerts-section').style.display = 'block';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading alerts:', error);
+    }
+}
+
+async function removeAlert(alertId) {
+    try {
+        const response = await fetch(`/api/patient/alerts?alert_id=${alertId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            loadAlerts(); // Перезагружаем алерты
+        }
+    } catch (error) {
+        console.error('Error removing alert:', error);
+    }
+}
+
+async function loadAvailableSlotsOverview() {
+    try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch('/api/patient/available-slots-overview', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            const container = document.getElementById('specialities-overview');
+            container.innerHTML = '';
+            
+            // Группируем по категориям
+            const categories = {};
+            Object.entries(data.overview).forEach(([key, speciality]) => {
+                const category = speciality.category || 'other';
+                if (!categories[category]) {
+                    categories[category] = [];
+                }
+                categories[category].push({key, ...speciality});
+            });
+            
+            // Отображаем по категориям
+            Object.entries(categories).forEach(([category, specialities]) => {
+                // Сортируем по количеству доступных слотов (убыванию)
+                specialities.sort((a, b) => b.available_slots - a.available_slots);
+                
+                specialities.forEach(speciality => {
+                    const col = document.createElement('div');
+                    col.className = 'col-md-6 col-lg-4 mb-3';
+                    
+                    const cardClass = speciality.available_slots > 0 ? 'border-success' : 'border-secondary';
+                    const textClass = speciality.available_slots > 0 ? 'text-success' : 'text-muted';
+                    
+                    col.innerHTML = `
+                        <div class="card h-100 ${cardClass}" style="cursor: pointer;" onclick="searchSpeciality('${speciality.key}')">
+                            <div class="card-body text-center">
+                                <div class="mb-2" style="font-size: 2rem;">${speciality.icon}</div>
+                                <h6 class="card-title">${speciality.name}</h6>
+                                <p class="card-text ${textClass} mb-0">
+                                    <strong>${speciality.available_slots}</strong> verfügbare Termine
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.appendChild(col);
+                });
+            });
+            
+            document.getElementById('available-slots-overview').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error loading available slots overview:', error);
+    }
+}
+
+function searchSpeciality(speciality) {
+    // Перенаправляем на страницу поиска с выбранной специальностью
+    window.location.href = `/patient/search?speciality=${speciality}`;
+}
+</script>
+
+{% block toolbar %}
+<a href="{{ url_for('patient_web.search') }}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-search"></i> Arzt suchen
+</a>
+{% endblock %}

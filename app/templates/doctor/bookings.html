@@ -1,0 +1,275 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Termine verwalten" %}
+{% set user_type = "doctor" %}
+
+{% block dashboard_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Alle Termine</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Фильтры -->
+                    <div class="mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" id="status-filter">
+                                    <option value="">Alle</option>
+                                    <option value="confirmed">Bestätigt</option>
+                                    <option value="cancelled">Storniert</option>
+                                    <option value="completed">Abgeschlossen</option>
+                                    <option value="no_show">Nicht erschienen</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Datum von</label>
+                                <input type="date" class="form-control" id="date-from">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Datum bis</label>
+                                <input type="date" class="form-control" id="date-to">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">&nbsp;</label>
+                                <button class="btn btn-primary w-100" id="filter-button">
+                                    <i class="bi bi-search"></i> Filtern
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Список бронирований -->
+                    <div id="bookings-container">
+                        <p class="text-muted">Lade Termine...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для деталей бронирования -->
+<div class="modal fade" id="bookingModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Termindetails</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="booking-details">
+                <!-- Детали будут загружены через JS -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                <button type="button" class="btn btn-danger" id="cancel-booking-btn" style="display: none;" onclick="cancelBooking()">
+                    Termin stornieren
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script>
+console.log('=== BOOKINGS SCRIPT LOADED ===');
+
+async function loadBookings() {
+    console.log('loadBookings function called');
+    try {
+        // Проверяем доступ к localStorage
+        let token;
+        try {
+            token = localStorage.getItem('access_token');
+        } catch (e) {
+            console.warn('localStorage not available:', e);
+            const container = document.getElementById('bookings-container');
+            container.innerHTML = `
+                <div class="alert alert-warning">
+                    <h5>🔒 Speicherzugriff blockiert</h5>
+                    <p>Ihr Browser blockiert den Zugriff auf den lokalen Speicher aus Sicherheitsgründen.</p>
+                    <p>Bitte erlauben Sie Cookies und Speicher für diese Website:</p>
+                    <ol>
+                        <li>Klicken Sie auf das 🔒 Schloss-Symbol in der Adressleiste</li>
+                        <li>Wählen Sie "Cookies und Website-Daten" → "Zulassen"</li>
+                        <li>Oder öffnen Sie diese Seite in einem privaten/incognito Fenster</li>
+                    </ol>
+                    <button class="btn btn-primary mt-2" onclick="loadBookings()">
+                        <i class="bi bi-arrow-clockwise"></i> Erneut versuchen
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        if (!token) {
+            const container = document.getElementById('bookings-container');
+            container.innerHTML = '<div class="alert alert-danger">Sie sind nicht angemeldet. Bitte melden Sie sich an.</div>';
+            return;
+        }
+
+        const status = document.getElementById('status-filter').value;
+        const dateFrom = document.getElementById('date-from').value;
+        const dateTo = document.getElementById('date-to').value;
+
+        const container = document.getElementById('bookings-container');
+        container.innerHTML = '<div class="text-center"><div class="spinner-border"></div> Lade Termine...</div>';
+
+        // Строим URL с параметрами
+        let url = '/api/doctors/bookings';
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+        if (params.toString()) url += '?' + params.toString();
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            displayBookings(data.bookings);
+        } else {
+            container.innerHTML = '<div class="alert alert-danger">Fehler beim Laden der Termine</div>';
+        }
+    } catch (error) {
+        console.error('Error loading bookings:', error);
+        const container = document.getElementById('bookings-container');
+        if (error.name === 'SecurityError') {
+            container.innerHTML = '<div class="alert alert-warning">Speicherzugriff blockiert. Bitte erlauben Sie Cookies und Speicher für diese Seite.</div>';
+        } else {
+            container.innerHTML = '<div class="alert alert-danger">Netzwerkfehler beim Laden der Termine</div>';
+        }
+    }
+}
+
+// Делаем функцию глобально доступной
+window.loadBookings = loadBookings;
+window.viewBooking = viewBooking;
+window.cancelBooking = cancelBooking;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Устанавливаем даты по умолчанию (последние 30 дней)
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    document.getElementById('date-to').value = today.toISOString().split('T')[0];
+    document.getElementById('date-from').value = thirtyDaysAgo.toISOString().split('T')[0];
+
+    // Добавляем обработчик события для кнопки фильтра
+    const filterButton = document.getElementById('filter-button');
+    if (filterButton) {
+        filterButton.addEventListener('click', loadBookings);
+    }
+
+    loadBookings();
+});
+
+function displayBookings(bookings) {
+    const container = document.getElementById('bookings-container');
+
+    if (bookings.length === 0) {
+        container.innerHTML = '<p class="text-muted">Keine Termine gefunden.</p>';
+        return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-striped">';
+    html += `
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Uhrzeit</th>
+                <th>Patient</th>
+                <th>Status</th>
+                <th>Buchungscode</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+    bookings.forEach(booking => {
+        const statusClass = getStatusClass(booking.status);
+        const statusText = getStatusText(booking.status);
+
+        html += `
+            <tr>
+                <td>${booking.date}</td>
+                <td>${booking.time}</td>
+                <td>${booking.patient_name}</td>
+                <td><span class="badge bg-${statusClass}">${statusText}</span></td>
+                <td><code>${booking.booking_code}</code></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewBooking('${booking.id}')">
+                        <i class="bi bi-eye"></i> Details
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+function getStatusClass(status) {
+    switch (status) {
+        case 'confirmed': return 'success';
+        case 'cancelled': return 'danger';
+        case 'completed': return 'info';
+        case 'no_show': return 'warning';
+        default: return 'secondary';
+    }
+}
+
+function getStatusText(status) {
+    switch (status) {
+        case 'confirmed': return 'Bestätigt';
+        case 'cancelled': return 'Storniert';
+        case 'completed': return 'Abgeschlossen';
+        case 'no_show': return 'Nicht erschienen';
+        default: return status;
+    }
+}
+
+async function viewBooking(bookingId) {
+    // Пока что показываем простое сообщение, так как нет API для деталей бронирования
+    const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
+    const details = document.getElementById('booking-details');
+
+    details.innerHTML = `
+        <div class="alert alert-info">
+            <h6>Details werden geladen...</h6>
+            <p>Booking ID: ${bookingId}</p>
+            <p>Diese Funktion wird in Kürze verfügbar sein.</p>
+        </div>
+    `;
+
+    // Показываем кнопку отмены для подтвержденных бронирований
+    document.getElementById('cancel-booking-btn').style.display = 'inline-block';
+
+    modal.show();
+}
+
+function cancelBooking() {
+    if (confirm('Sind Sie sicher, dass Sie diesen Termin stornieren möchten?')) {
+        alert('Funktion wird in Kürze verfügbar sein.');
+        // TODO: Реализовать отмену бронирования
+    }
+}
+
+// Make functions globally accessible
+window.loadBookings = loadBookings;
+window.viewBooking = viewBooking;
+window.cancelBooking = cancelBooking;
+</script>
+{% endblock dashboard_scripts %}

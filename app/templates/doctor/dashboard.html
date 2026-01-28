@@ -1,0 +1,447 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Arzt Dashboard" %}
+{% set user_type = "doctor" %}
+
+{% block dashboard_content %}
+<div id="loading" class="text-center py-5">
+    <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Lade Dashboard...</p>
+</div>
+
+<div id="dashboard-content" style="display: none;">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Willkommen, <span id="doctor-name">Dr. Arzt</span>!</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Verwalten Sie Ihre Termine und Patienten.</p>
+
+                    <!-- Статус верификации -->
+                    <div id="verification-alert" class="alert alert-warning" style="display: none;">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Ihr Konto wird noch verifiziert. Sie erhalten eine Benachrichtigung, sobald die Verifizierung abgeschlossen ist.
+                    </div>
+
+                    <!-- Управление календарем -->
+                    <div class="mb-4">
+                        <h6>Kalender verwalten</h6>
+                        <div id="calendar-status">
+                            <!-- Статус календаря будет загружен через JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Предстоящие приемы -->
+            <div id="bookings-section" class="card mt-4" style="display: none;">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Heutige Termine</h5>
+                </div>
+                <div class="card-body">
+                    <div id="bookings-list" class="list-group list-group-flush">
+                        <!-- Бронирования будут загружены через JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Статистика -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Praxis Statistik</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="h4 text-primary" id="today-count">0</div>
+                            <small class="text-muted">Heute</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 text-info" id="total-count">0</div>
+                            <small class="text-muted">Gesamt</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Быстрые действия -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Schnellzugriff</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('doctor_web.bookings') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-calendar-check"></i> Buchungen verwalten
+                        </a>
+                        <a href="{{ url_for('doctor_web.calendar') }}" class="btn btn-outline-success">
+                            <i class="bi bi-calendar"></i> Kalender verwalten
+                        </a>
+                        <a href="{{ url_for('doctor_web.profile') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-person"></i> Profil
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboard();
+});
+
+async function loadDashboard() {
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+        // Нет токена - перенаправляем на вход
+        window.location.href = '/doctor/login';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/doctors/dashboard', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Обновляем имя врача
+            document.getElementById('doctor-name').textContent = data.doctor.name;
+            
+            // Показываем статус верификации
+            if (!data.doctor.is_verified) {
+                document.getElementById('verification-alert').style.display = 'block';
+            }
+            
+            // Обновляем статус календаря
+            const calendarStatus = document.getElementById('calendar-status');
+            if (data.calendar.exists) {
+                calendarStatus.innerHTML = `
+                    <p class="text-success">
+                        <i class="bi bi-check-circle"></i>
+                        Ihr Kalender ist eingerichtet und aktiv.
+                    </p>
+                    <a href="/doctor/calendar" class="btn btn-primary">
+                        <i class="bi bi-calendar"></i> Kalender bearbeiten
+                    </a>
+                `;
+                document.getElementById('add-slot-btn').style.display = 'inline-block';
+            } else {
+                calendarStatus.innerHTML = `
+                    <p class="text-warning">
+                        <i class="bi bi-exclamation-circle"></i>
+                        Sie haben noch keinen Kalender eingerichtet.
+                    </p>
+                    <button class="btn btn-success" onclick="setupCalendar()">
+                        <i class="bi bi-plus-circle"></i> Kalender einrichten
+                    </button>
+                `;
+            }
+            
+            // Показываем бронирования
+            if (data.upcoming_bookings && data.upcoming_bookings.length > 0) {
+                const bookingsList = document.getElementById('bookings-list');
+                bookingsList.innerHTML = '';
+                
+                data.upcoming_bookings.forEach(booking => {
+                    const bookingItem = document.createElement('div');
+                    bookingItem.className = 'list-group-item';
+                    bookingItem.innerHTML = `
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${booking.patient_name}</h6>
+                            <small class="text-muted">${booking.time}</small>
+                        </div>
+                        <p class="mb-1">${booking.date}</p>
+                        <small class="text-${booking.status === 'confirmed' ? 'success' : 'warning'}">
+                            ${booking.status === 'confirmed' ? 'Bestätigt' : 'Ausstehend'}
+                        </small>
+                    `;
+                    bookingsList.appendChild(bookingItem);
+                });
+                
+                document.getElementById('bookings-section').style.display = 'block';
+                document.getElementById('today-count').textContent = data.upcoming_bookings.length;
+            }
+            
+            // Обновляем общую статистику
+            document.getElementById('total-count').textContent = '0'; // TODO: добавить в API
+            
+            // Показываем контент
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard-content').style.display = 'block';
+            
+        } else if (response.status === 401) {
+            // Токен истек или недействителен
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('doctor_id');
+            window.location.href = '/doctor/login';
+        } else {
+            throw new Error('Failed to load dashboard');
+        }
+        
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        document.getElementById('loading').innerHTML = `
+            <div class="alert alert-danger">
+                <h6>Fehler beim Laden des Dashboards</h6>
+                <p>Bitte versuchen Sie es später erneut.</p>
+                <button class="btn btn-primary" onclick="window.location.reload()">Erneut versuchen</button>
+            </div>
+        `;
+    }
+}
+
+function setupCalendar() {
+    // Показываем модальное окно для настройки календаря
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'calendarSetupModal';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Kalender einrichten</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="calendar-form">
+                        <div class="mb-3">
+                            <label class="form-label">Dauer eines Termins (Minuten)</label>
+                            <select class="form-select" id="slot-duration" required>
+                                <option value="15">15 Minuten</option>
+                                <option value="20">20 Minuten</option>
+                                <option value="30" selected>30 Minuten</option>
+                                <option value="45">45 Minuten</option>
+                                <option value="60">60 Minuten</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Pause zwischen Terminen (Minuten)</label>
+                            <select class="form-select" id="buffer-time">
+                                <option value="0">Keine Pause</option>
+                                <option value="5" selected>5 Minuten</option>
+                                <option value="10">10 Minuten</option>
+                                <option value="15">15 Minuten</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Arbeitszeiten</label>
+                            <div id="working-hours">
+                                <!-- Дни недели будут добавлены через JS -->
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" onclick="createCalendar()">Kalender erstellen</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Инициализируем дни недели
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const dayNames = {
+        'monday': 'Montag',
+        'tuesday': 'Dienstag', 
+        'wednesday': 'Mittwoch',
+        'thursday': 'Donnerstag',
+        'friday': 'Freitag',
+        'saturday': 'Samstag',
+        'sunday': 'Sonntag'
+    };
+    
+    const workingHoursDiv = document.getElementById('working-hours');
+    days.forEach(day => {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'mb-2';
+        dayDiv.innerHTML = `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="${day}-enabled" ${day !== 'sunday' ? 'checked' : ''}>
+                <label class="form-check-label" for="${day}-enabled">
+                    ${dayNames[day]}
+                </label>
+            </div>
+            <div id="${day}-times" class="ms-3" ${day !== 'sunday' ? '' : 'style="display:none;"'}>
+                <div class="row g-2">
+                    <div class="col-md-5">
+                        <input type="time" class="form-control" id="${day}-start" value="09:00">
+                    </div>
+                    <div class="col-md-1 text-center">-</div>
+                    <div class="col-md-5">
+                        <input type="time" class="form-control" id="${day}-end" value="18:00">
+                    </div>
+                </div>
+            </div>
+        `;
+        workingHoursDiv.appendChild(dayDiv);
+        
+        // Обработчик изменения чекбокса
+        document.getElementById(`${day}-enabled`).addEventListener('change', function() {
+            document.getElementById(`${day}-times`).style.display = this.checked ? 'block' : 'none';
+        });
+    });
+    
+    // Показываем модальное окно
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    // Удаляем модальное окно после закрытия
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+async function createCalendar() {
+    const token = localStorage.getItem('access_token');
+    const slotDuration = document.getElementById('slot-duration').value;
+    const bufferTime = document.getElementById('buffer-time').value;
+    
+    // Собираем рабочие часы
+    const workingHours = {};
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    
+    days.forEach(day => {
+        const enabled = document.getElementById(`${day}-enabled`).checked;
+        if (enabled) {
+            const start = document.getElementById(`${day}-start`).value;
+            const end = document.getElementById(`${day}-end`).value;
+            workingHours[day] = [{'start': start, 'end': end}];
+        } else {
+            workingHours[day] = [];
+        }
+    });
+    
+    try {
+        const response = await fetch('/api/doctors/calendar/create', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                working_hours: workingHours,
+                slot_duration: parseInt(slotDuration),
+                buffer_time: parseInt(bufferTime)
+            })
+        });
+        
+        if (response.ok) {
+            // Закрываем модальное окно и перезагружаем dashboard
+            const modal = document.getElementById('calendarSetupModal');
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            bsModal.hide();
+            
+            // Перезагружаем dashboard
+            loadDashboard();
+            
+            alert('Kalender erfolgreich erstellt!');
+        } else {
+            const error = await response.json();
+            alert('Fehler: ' + error.error);
+        }
+    } catch (error) {
+        console.error('Error creating calendar:', error);
+        alert('Fehler beim Erstellen des Kalenders');
+    }
+}
+
+function addTimeSlot() {
+    // Показываем модальное окно для генерации слотов
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'slotGenerationModal';
+    modal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Termine generieren</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="slot-form">
+                        <div class="mb-3">
+                            <label class="form-label">Datum</label>
+                            <input type="date" class="form-control" id="slot-date" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" onclick="generateSlots()">Termine generieren</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Устанавливаем сегодняшнюю дату
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('slot-date').value = today;
+    
+    // Показываем модальное окно
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    // Удаляем модальное окно после закрытия
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+async function generateSlots() {
+    const token = localStorage.getItem('access_token');
+    const date = document.getElementById('slot-date').value;
+    
+    try {
+        const response = await fetch('/api/doctors/calendar/slots', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'generate',
+                date: date
+            })
+        });
+        
+        if (response.ok) {
+            // Закрываем модальное окно
+            const modal = document.getElementById('slotGenerationModal');
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            bsModal.hide();
+            
+            alert('Termine erfolgreich generiert!');
+        } else {
+            const error = await response.json();
+            alert('Fehler: ' + error.error);
+        }
+    } catch (error) {
+        console.error('Error generating slots:', error);
+        alert('Fehler beim Generieren der Termine');
+    }
+}
+</script>
+
+{% block toolbar %}
+<button class="btn btn-sm btn-outline-success" id="add-slot-btn" style="display: none;" onclick="addTimeSlot()">
+    <i class="bi bi-plus"></i> Termin hinzufügen
+</button>
+{% endblock %}

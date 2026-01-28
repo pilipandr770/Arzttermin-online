@@ -1,0 +1,275 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Arzt suchen" %}
+{% set user_type = "patient" %}
+
+{% block dashboard_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Фильтры поиска -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Arzt suchen</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Spezialisierung</label>
+                            <select class="form-select" id="search-speciality">
+                                <option value="">Alle Spezialisierungen</option>
+                                {% for key, spec in specialities.items() %}
+                                <option value="{{ key }}">{{ spec.de }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Stadt</label>
+                            <input type="text" class="form-control" id="search-city" placeholder="Stadt eingeben">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Name des Arztes</label>
+                            <input type="text" class="form-control" id="search-name" placeholder="Name eingeben">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-primary" onclick="searchDoctors()">
+                            <i class="bi bi-search"></i> Suchen
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                            <i class="bi bi-x-circle"></i> Filter löschen
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Результаты поиска -->
+            <div id="search-results">
+                <div class="text-center py-5">
+                    <i class="bi bi-search text-muted" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-3">Verwenden Sie die Filter oben, um Ärzte zu suchen.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для просмотра слотов -->
+<div class="modal fade" id="slotsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Verfügbare Termine</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="slots-content">
+                    <!-- Слоты будут загружены через JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Автоматический поиск при загрузке страницы
+    searchDoctors();
+});
+
+async function searchDoctors() {
+    const token = localStorage.getItem('access_token');
+    const speciality = document.getElementById('search-speciality').value;
+    const city = document.getElementById('search-city').value;
+    const name = document.getElementById('search-name').value;
+    
+    const resultsDiv = document.getElementById('search-results');
+    resultsDiv.innerHTML = '<div class="text-center"><div class="spinner-border"></div> Suche...</div>';
+    
+    // Формируем параметры запроса
+    const params = new URLSearchParams();
+    if (speciality) params.append('speciality', speciality);
+    if (city) params.append('city', city);
+    if (name) params.append('name', name);
+    
+    try {
+        const response = await fetch(`/api/patient/search/doctors?${params}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayDoctors(data.doctors);
+        } else {
+            resultsDiv.innerHTML = '<div class="alert alert-danger">Fehler bei der Suche</div>';
+        }
+    } catch (error) {
+        console.error('Error searching doctors:', error);
+        resultsDiv.innerHTML = '<div class="alert alert-danger">Fehler bei der Suche</div>';
+    }
+}
+
+function displayDoctors(doctors) {
+    const resultsDiv = document.getElementById('search-results');
+    
+    if (doctors.length === 0) {
+        resultsDiv.innerHTML = `
+            <div class="text-center py-5">
+                <i class="bi bi-search text-muted" style="font-size: 3rem;"></i>
+                <p class="text-muted mt-3">Keine Ärzte gefunden. Versuchen Sie andere Suchkriterien.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div class="row">';
+    doctors.forEach(doctor => {
+        const nextSlots = doctor.available_slots.slice(0, 2);
+        const slotsText = nextSlots.length > 0 
+            ? `Nächste Termine: ${nextSlots.map(s => `${s.date} ${s.time}`).join(', ')}`
+            : 'Keine Termine verfügbar';
+        
+        html += `
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">${doctor.name}</h5>
+                        <p class="card-text text-primary">${getSpecialityName(doctor.speciality)}</p>
+                        <p class="card-text small text-muted">${slotsText}</p>
+                        <div class="mt-auto">
+                            <button class="btn btn-primary btn-sm me-2" onclick="viewSlots('${doctor.id}')">
+                                <i class="bi bi-calendar"></i> Termine ansehen
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="toggleAlert('${doctor.id}')">
+                                <i class="bi bi-bell"></i> Benachrichtigen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    resultsDiv.innerHTML = html;
+}
+
+function getSpecialityName(speciality) {
+    const specialities = {{ specialities|tojson }};
+    return specialities[speciality] ? specialities[speciality].de : speciality;
+}
+
+async function viewSlots(doctorId) {
+    const modal = new bootstrap.Modal(document.getElementById('slotsModal'));
+    const content = document.getElementById('slots-content');
+    
+    content.innerHTML = '<div class="text-center"><div class="spinner-border"></div> Lade Termine...</div>';
+    modal.show();
+    
+    try {
+        const response = await fetch(`/api/patient/slots/${doctorId}?days=14`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displaySlotsInModal(data);
+        } else {
+            content.innerHTML = '<div class="alert alert-danger">Fehler beim Laden der Termine</div>';
+        }
+    } catch (error) {
+        console.error('Error loading slots:', error);
+        content.innerHTML = '<div class="alert alert-danger">Fehler beim Laden der Termine</div>';
+    }
+}
+
+function displaySlotsInModal(data) {
+    const content = document.getElementById('slots-content');
+    
+    let html = `<h6>${data.doctor.name} - ${getSpecialityName(data.doctor.speciality)}</h6>`;
+    
+    if (Object.keys(data.slots).length === 0) {
+        html += '<p class="text-muted">Keine Termine verfügbar</p>';
+    } else {
+        Object.keys(data.slots).sort().forEach(date => {
+            html += `<h6 class="mt-3">${formatDate(date)}</h6>`;
+            html += '<div class="row g-2">';
+            
+            data.slots[date].forEach(slot => {
+                html += `
+                    <div class="col-md-4">
+                        <button class="btn btn-outline-primary btn-sm w-100" onclick="bookSlot('${slot.id}')">
+                            ${slot.time} (${slot.duration}min)
+                        </button>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        });
+    }
+    
+    content.innerHTML = html;
+}
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('de-DE', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+}
+
+async function bookSlot(slotId) {
+    if (!confirm('Möchten Sie diesen Termin buchen?')) return;
+    
+    try {
+        const response = await fetch('/api/patient/book', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ slot_id: slotId })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            alert(`Termin erfolgreich gebucht!\n\n${data.doctor_name}\n${data.date} ${data.time}`);
+            
+            // Закрываем модальное окно и обновляем поиск
+            const modal = bootstrap.Modal.getInstance(document.getElementById('slotsModal'));
+            modal.hide();
+            searchDoctors();
+        } else {
+            const error = await response.json();
+            alert('Fehler: ' + error.error);
+        }
+    } catch (error) {
+        console.error('Error booking slot:', error);
+        alert('Fehler bei der Buchung');
+    }
+}
+
+async function toggleAlert(doctorId) {
+    // Для упрощения - просто показываем сообщение
+    alert('Benachrichtigungsfunktion wird bald verfügbar sein!');
+}
+
+function clearFilters() {
+    document.getElementById('search-speciality').value = '';
+    document.getElementById('search-city').value = '';
+    document.getElementById('search-name').value = '';
+    searchDoctors();
+}
+</script>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Test - TerminFinder</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">🔧 JavaScript & Browser Test</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="test-results" class="mb-4">
+                            <h6>Test Results:</h6>
+                            <div id="js-enabled" class="alert alert-info">⏳ Testing JavaScript...</div>
+                            <div id="localstorage-test" class="alert alert-info">⏳ Testing localStorage...</div>
+                            <div id="fetch-test" class="alert alert-info">⏳ Testing fetch API...</div>
+                            <div id="cors-test" class="alert alert-info">⏳ Testing CORS...</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h6>Manual Tests:</h6>
+                            <button class="btn btn-primary me-2" onclick="testLocalStorage()">Test localStorage</button>
+                            <button class="btn btn-success me-2" onclick="testAPI()">Test API</button>
+                            <button class="btn btn-warning me-2" onclick="clearStorage()">Clear Storage</button>
+                            <button class="btn btn-info" onclick="showBrowserInfo()">Browser Info</button>
+                        </div>
+
+                        <div id="manual-results" class="mt-4">
+                            <!-- Manual test results will appear here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Automatic tests on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            testJavaScript();
+            testLocalStorageAuto();
+            testFetchAPI();
+            testCORS();
+        });
+
+        function testJavaScript() {
+            const element = document.getElementById('js-enabled');
+            element.className = 'alert alert-success';
+            element.innerHTML = '✅ JavaScript is ENABLED and working';
+        }
+
+        function testLocalStorageAuto() {
+            const element = document.getElementById('localstorage-test');
+            try {
+                localStorage.setItem('test', 'working');
+                localStorage.removeItem('test');
+                element.className = 'alert alert-success';
+                element.innerHTML = '✅ localStorage is AVAILABLE';
+            } catch (e) {
+                element.className = 'alert alert-danger';
+                element.innerHTML = `❌ localStorage BLOCKED: ${e.message}`;
+            }
+        }
+
+        function testFetchAPI() {
+            const element = document.getElementById('fetch-test');
+            if (typeof fetch === 'function') {
+                element.className = 'alert alert-success';
+                element.innerHTML = '✅ Fetch API is AVAILABLE';
+            } else {
+                element.className = 'alert alert-danger';
+                element.innerHTML = '❌ Fetch API is NOT available';
+            }
+        }
+
+        function testCORS() {
+            const element = document.getElementById('cors-test');
+            // Try to make a simple request to our API
+            fetch('http://localhost:5000/api/auth/doctor/login', {
+                method: 'OPTIONS'
+            })
+            .then(response => {
+                element.className = 'alert alert-success';
+                element.innerHTML = '✅ CORS seems to be working';
+            })
+            .catch(error => {
+                element.className = 'alert alert-warning';
+                element.innerHTML = `⚠️ CORS test inconclusive: ${error.message}`;
+            });
+        }
+
+        function testLocalStorage() {
+            const results = document.getElementById('manual-results');
+            try {
+                // Test setting/getting
+                localStorage.setItem('terminfinder_test', 'Hello World');
+                const value = localStorage.getItem('terminfinder_test');
+                localStorage.removeItem('terminfinder_test');
+
+                results.innerHTML += `
+                    <div class="alert alert-success">
+                        <strong>localStorage Test:</strong> ✅ Working correctly<br>
+                        Set/Get/Remove operations successful
+                    </div>
+                `;
+            } catch (e) {
+                results.innerHTML += `
+                    <div class="alert alert-danger">
+                        <strong>localStorage Test:</strong> ❌ Failed<br>
+                        Error: ${e.message}<br>
+                        Type: ${e.name}
+                    </div>
+                `;
+            }
+        }
+
+        function testAPI() {
+            const results = document.getElementById('manual-results');
+
+            // First try to login
+            fetch('http://localhost:5000/api/auth/doctor/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: 'doctor@test.com',
+                    password: 'password123'
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(`Login failed: ${response.status}`);
+                }
+            })
+            .then(data => {
+                const token = data.access_token;
+                results.innerHTML += `
+                    <div class="alert alert-success">
+                        <strong>API Login Test:</strong> ✅ Successful<br>
+                        Token received (length: ${token.length})
+                    </div>
+                `;
+
+                // Now test calendar API
+                return fetch('http://localhost:5000/api/doctors/calendar/slots?start_date=2026-01-28&end_date=2026-01-28', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(`Calendar API failed: ${response.status}`);
+                }
+            })
+            .then(data => {
+                const slots = data.slots || [];
+                results.innerHTML += `
+                    <div class="alert alert-success">
+                        <strong>API Calendar Test:</strong> ✅ Successful<br>
+                        Retrieved ${slots.length} slots
+                    </div>
+                `;
+            })
+            .catch(error => {
+                results.innerHTML += `
+                    <div class="alert alert-danger">
+                        <strong>API Test:</strong> ❌ Failed<br>
+                        Error: ${error.message}
+                    </div>
+                `;
+            });
+        }
+
+        function clearStorage() {
+            const results = document.getElementById('manual-results');
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                results.innerHTML += `
+                    <div class="alert alert-info">
+                        <strong>Storage Cleared:</strong> ✅ localStorage and sessionStorage cleared
+                    </div>
+                `;
+            } catch (e) {
+                results.innerHTML += `
+                    <div class="alert alert-danger">
+                        <strong>Storage Clear:</strong> ❌ Failed<br>
+                        Error: ${e.message}
+                    </div>
+                `;
+            }
+        }
+
+        function showBrowserInfo() {
+            const results = document.getElementById('manual-results');
+            const info = {
+                userAgent: navigator.userAgent,
+                cookieEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                language: navigator.language,
+                platform: navigator.platform,
+                localStorage: typeof Storage !== 'undefined' ? 'Available' : 'Not Available',
+                fetch: typeof fetch !== 'undefined' ? 'Available' : 'Not Available'
+            };
+
+            let infoHtml = '<div class="alert alert-info"><strong>Browser Info:</strong><br>';
+            for (const [key, value] of Object.entries(info)) {
+                infoHtml += `${key}: ${value}<br>`;
+            }
+            infoHtml += '</div>';
+
+            results.innerHTML += infoHtml;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Mein Profil" %}
+{% set user_type = "patient" %}
+
+{% block dashboard_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div id="loading" class="text-center py-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Lade Profil...</p>
+            </div>
+            
+            <div id="profile-content" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Mein Profil</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Name</label>
+                                    <input type="text" class="form-control" id="patient-name" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Telefon</label>
+                                    <input type="text" class="form-control" id="patient-phone" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Gesamt Termine</label>
+                                    <input type="text" class="form-control" id="total-bookings" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Besuchte Termine</label>
+                                    <input type="text" class="form-control" id="attended-appointments" readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button class="btn btn-primary" onclick="editProfile()">
+                                <i class="bi bi-pencil"></i> Profil bearbeiten
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadProfile();
+});
+
+async function loadProfile() {
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+        window.location.href = '/auth/patient/login';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/patient/profile', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Заполняем данные профиля
+            document.getElementById('patient-name').value = data.patient.name || '';
+            document.getElementById('patient-phone').value = data.patient.phone || '';
+            document.getElementById('total-bookings').value = data.patient.total_bookings || 0;
+            document.getElementById('attended-appointments').value = data.patient.attended_appointments || 0;
+            
+            // Показываем контент
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('profile-content').style.display = 'block';
+        } else if (response.status === 401) {
+            // Токен истек или недействителен
+            localStorage.removeItem('access_token');
+            window.location.href = '/auth/patient/login';
+        } else {
+            throw new Error('Failed to load profile');
+        }
+    } catch (error) {
+        console.error('Error loading profile:', error);
+        document.getElementById('loading').innerHTML = `
+            <div class="alert alert-danger">
+                <h6>Fehler beim Laden des Profils</h6>
+                <p>Bitte versuchen Sie es später erneut.</p>
+                <a href="{{ url_for('patient_web.dashboard') }}" class="btn btn-primary">Zurück zum Dashboard</a>
+            </div>
+        `;
+    }
+}
+
+function editProfile() {
+    // В MVP профиль только для чтения
+    alert('Profilbearbeitung ist in dieser Version nicht verfügbar.');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,182 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Mein Profil" %}
+{% set user_type = "doctor" %}
+
+{% block dashboard_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Persönliche Informationen</h5>
+                </div>
+                <div class="card-body">
+                    <form id="profile-form">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Vorname</label>
+                                <input type="text" class="form-control" id="first-name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nachname</label>
+                                <input type="text" class="form-control" id="last-name" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">E-Mail</label>
+                            <input type="email" class="form-control" id="email" readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Spezialisierung</label>
+                            <select class="form-select" id="speciality" required>
+                                <option value="">Spezialisierung wählen</option>
+                                <option value="general">Allgemeinmedizin</option>
+                                <option value="dentist">Zahnmedizin</option>
+                                <option value="cardiology">Kardiologie</option>
+                                <option value="dermatology">Dermatologie</option>
+                                <option value="orthopedics">Orthopädie</option>
+                                <option value="pediatrics">Pädiatrie</option>
+                                <option value="gynecology">Gynäkologie</option>
+                                <option value="ophthalmology">Augenheilkunde</option>
+                                <option value="psychiatry">Psychiatrie</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Sprachen</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="lang-de" checked>
+                                <label class="form-check-label" for="lang-de">
+                                    Deutsch
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="lang-en">
+                                <label class="form-check-label" for="lang-en">
+                                    Englisch
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="lang-ru">
+                                <label class="form-check-label" for="lang-ru">
+                                    Russisch
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Speichern</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Verifizierungsstatus</h5>
+                </div>
+                <div class="card-body">
+                    <div id="verification-status">
+                        <!-- Статус будет загружен через JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadProfile();
+    
+    // Обработчик формы
+    document.getElementById('profile-form').addEventListener('submit', saveProfile);
+});
+
+async function loadProfile() {
+    const token = localStorage.getItem('access_token');
+    
+    try {
+        const response = await fetch('/api/doctors/profile', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Заполняем форму
+            document.getElementById('first-name').value = data.doctor.first_name || '';
+            document.getElementById('last-name').value = data.doctor.last_name || '';
+            document.getElementById('email').value = data.doctor.email || '';
+            document.getElementById('speciality').value = data.doctor.speciality || '';
+            
+            // Статус верификации
+            const verificationDiv = document.getElementById('verification-status');
+            if (data.doctor.is_verified) {
+                verificationDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i>
+                        Ihr Konto ist verifiziert.
+                    </div>
+                `;
+            } else {
+                verificationDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Ihr Konto wird noch verifiziert.
+                    </div>
+                `;
+            }
+        } else {
+            console.error('Failed to load profile');
+        }
+    } catch (error) {
+        console.error('Error loading profile:', error);
+    }
+}
+
+async function saveProfile(event) {
+    event.preventDefault();
+    
+    const token = localStorage.getItem('access_token');
+    const formData = {
+        first_name: document.getElementById('first-name').value,
+        last_name: document.getElementById('last-name').value,
+        speciality: document.getElementById('speciality').value,
+        languages: []
+    };
+    
+    // Собираем языки
+    if (document.getElementById('lang-de').checked) formData.languages.push('de');
+    if (document.getElementById('lang-en').checked) formData.languages.push('en');
+    if (document.getElementById('lang-ru').checked) formData.languages.push('ru');
+    
+    try {
+        const response = await fetch('/api/doctors/profile', {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            alert('Profil erfolgreich gespeichert!');
+        } else {
+            const error = await response.json();
+            alert('Fehler: ' + error.error);
+        }
+    } catch (error) {
+        console.error('Error saving profile:', error);
+        alert('Fehler beim Speichern des Profils');
+    }
+}
+</script>
