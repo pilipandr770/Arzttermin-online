@@ -200,6 +200,13 @@ class Booking(db.Model):
         # Возвращаем слот в доступные
         if self.timeslot:
             self.timeslot.status = 'available'
+            
+            # Проверяем алерты для этого слота
+            try:
+                from app.services.alert_service import check_and_notify_alerts
+                check_and_notify_alerts(self.timeslot.id)
+            except Exception as e:
+                print(f"Error checking alerts: {e}")
         
         # Обновляем статистику пациента (опционально уменьшаем счетчик)
         # self.patient.total_bookings -= 1  # Можно раскомментировать если нужно

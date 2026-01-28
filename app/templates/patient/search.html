@@ -167,9 +167,16 @@ function displayDoctors(doctors) {
                                 <i class="bi bi-calendar-check"></i> ${doctor.free_slots_count} freie Termine
                             </span>
                         </div>
+                        
+                        ${doctor.free_slots_count > 0 ? `
                         <button class="btn btn-sm btn-primary w-100" onclick="toggleDoctorSlots('${doctor.id}')" id="toggle-btn-${doctor.id}">
                             <i class="bi bi-chevron-down"></i> Termine anzeigen
                         </button>
+                        ` : `
+                        <button class="btn btn-sm btn-warning w-100" onclick="createAlert('${doctor.id}', '${doctor.full_name}', '${doctor.speciality}')">
+                            <i class="bi bi-bell"></i> Benachrichtigung einrichten
+                        </button>
+                        `}
                         
                         <!-- Контейнер для слотов (скрыт по умолчанию) -->
                         <div id="slots-container-${doctor.id}" class="mt-3" style="display: none;">
@@ -318,6 +325,38 @@ function formatDate(dateStr) {
         day: 'numeric' 
     });
 }
+
+async function createAlert(doctorId, doctorName, speciality) {
+    if (!confirm(`Möchten Sie eine Benachrichtigung einrichten für: ${doctorName}?\n\nSie werden informiert, wenn ein neuer Termin verfügbar wird.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/patient/alerts', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                doctor_id: doctorId,
+                speciality: speciality
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            alert('Benachrichtigung erfolgreich eingerichtet!\n\nSie erhalten eine Nachricht, sobald ein Termin verfügbar wird.');
+        } else {
+            const error = await response.json();
+            alert('Fehler: ' + (error.error || 'Konnte Benachrichtigung nicht erstellen'));
+        }
+    } catch (error) {
+        console.error('Error creating alert:', error);
+        alert('Fehler beim Erstellen der Benachrichtigung');
+    }
+}
+
 
 function clearFilters() {
     document.getElementById('search-speciality').value = '';
