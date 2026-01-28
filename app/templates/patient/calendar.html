@@ -178,30 +178,25 @@ async function loadCalendar() {
             const practiceCity = doctor.practice ? doctor.practice.city : '';
 
             calendarHtml += `
-                <div class="col-12 mb-3" id="calendar-doctor-card-${doctor.id}">
-                    <div class="card">
+                <div class="col-md-6 col-lg-4 mb-3" id="calendar-doctor-card-${doctor.id}">
+                    <div class="card h-100">
                         <div class="card-body">
-                            <div class="row align-items-center">
-                                <div class="col-md-8">
-                                    <h6 class="mb-1">
-                                        <i class="bi bi-person-circle text-primary"></i>
-                                        ${doctor.full_name}
-                                    </h6>
-                                    <p class="text-primary mb-1 small">${doctor.speciality_display}</p>
-                                    ${practiceName ? `<p class="text-muted mb-0 small"><i class="bi bi-hospital"></i> ${practiceName}</p>` : ''}
-                                    ${practiceCity ? `<p class="text-muted mb-0 small"><i class="bi bi-geo-alt"></i> ${practiceCity}</p>` : ''}
-                                </div>
-                                <div class="col-md-4 text-md-end">
-                                    <div class="mb-2">
-                                        <span class="badge bg-success">
-                                            <i class="bi bi-calendar-check"></i> ${doctor.free_slots_count} freie Termine
-                                        </span>
-                                    </div>
-                                    <button class="btn btn-sm btn-primary" onclick="toggleCalendarDoctorSlots('${doctor.id}', '${startDate}', '${endDate}')" id="calendar-toggle-btn-${doctor.id}">
-                                        <i class="bi bi-chevron-down"></i> Termine anzeigen
-                                    </button>
-                                </div>
+                            <h6 class="mb-2">
+                                <i class="bi bi-person-circle text-primary"></i>
+                                ${doctor.full_name}
+                            </h6>
+                            <p class="text-primary mb-2 small">${doctor.speciality_display}</p>
+                            ${practiceName ? `<p class="text-muted mb-1 small"><i class="bi bi-hospital"></i> ${practiceName}</p>` : ''}
+                            ${practiceCity ? `<p class="text-muted mb-2 small"><i class="bi bi-geo-alt"></i> ${practiceCity}</p>` : ''}
+                            
+                            <div class="mb-2">
+                                <span class="badge bg-success">
+                                    <i class="bi bi-calendar-check"></i> ${doctor.free_slots_count} freie Termine
+                                </span>
                             </div>
+                            <button class="btn btn-sm btn-primary w-100" onclick="toggleCalendarDoctorSlots('${doctor.id}', '${startDate}', '${endDate}')" id="calendar-toggle-btn-${doctor.id}">
+                                <i class="bi bi-chevron-down"></i> Termine anzeigen
+                            </button>
                             
                             <!-- Контейнер для слотов -->
                             <div id="calendar-slots-container-${doctor.id}" class="mt-3" style="display: none;">

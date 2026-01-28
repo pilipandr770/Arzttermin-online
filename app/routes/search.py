@@ -3,6 +3,7 @@
 """
 from flask import Blueprint, jsonify, request
 from app.models import Doctor, Calendar, TimeSlot, Practice
+from app.constants import SPECIALITIES
 from app import db
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
@@ -83,19 +84,34 @@ def get_available_doctors():
     # Формирование ответа
     doctors_list = []
     for doctor, calendar, practice, free_slots in results:
+        # Get speciality display from constants
+        speciality_info = SPECIALITIES.get(doctor.speciality, {})
+        speciality_display = speciality_info.get('de', doctor.speciality)
+        
+        # Parse practice address (it's stored as JSON text)
+        practice_data = None
+        if practice:
+            import json
+            try:
+                address_json = json.loads(practice.address) if practice.address else {}
+            except:
+                address_json = {}
+            
+            practice_data = {
+                'id': str(practice.id),
+                'name': practice.name,
+                'city': address_json.get('city'),
+                'address': practice.address
+            }
+        
         doctors_list.append({
             'id': str(doctor.id),
             'first_name': doctor.first_name,
             'last_name': doctor.last_name,
             'full_name': f"{doctor.first_name} {doctor.last_name}",
             'speciality': doctor.speciality,
-            'speciality_display': doctor.get_speciality_display(),
-            'practice': {
-                'id': str(practice.id) if practice else None,
-                'name': practice.name if practice else None,
-                'city': practice.city if practice else None,
-                'address': practice.address if practice else None
-            } if practice else None,
+            'speciality_display': speciality_display,
+            'practice': practice_data,
             'free_slots_count': int(free_slots),
             'has_available_slots': int(free_slots) > 0
         })
@@ -166,13 +182,17 @@ def get_doctor_slots(doctor_id):
                 'datetime': slot.start_time.isoformat()
             })
         
+        # Get speciality display from constants
+        speciality_info = SPECIALITIES.get(doctor.speciality, {})
+        speciality_display = speciality_info.get('de', doctor.speciality)
+        
         return jsonify({
             'doctor': {
                 'id': str(doctor.id),
                 'first_name': doctor.first_name,
                 'last_name': doctor.last_name,
                 'speciality': doctor.speciality,
-                'speciality_display': doctor.get_speciality_display()
+                'speciality_display': speciality_display
             },
             'slots_by_date': slots_by_date,
             'total_slots': len(slots),
