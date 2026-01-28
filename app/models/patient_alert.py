@@ -2,6 +2,7 @@
 PatientAlert Model - Уведомления пациентов о свободных слотах
 """
 from app import db
+from app.models import get_table_args
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -15,15 +16,13 @@ class PatientAlert(db.Model):
     Пациент может подписаться на уведомления для определенных критериев поиска
     """
     __tablename__ = 'patient_alerts'
-    # Schema только для PostgreSQL
-    if 'postgresql' in os.getenv('DATABASE_URL', ''):
-        __table_args__ = {'schema': os.getenv('DB_SCHEMA', 'public')}
+    __table_args__ = get_table_args()
     
     # Primary Key
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Foreign Keys
-    patient_id = db.Column(UUID(as_uuid=True), db.ForeignKey('patients.id'), nullable=False, index=True)
+    patient_id = db.Column(UUID(as_uuid=True), db.ForeignKey('terminfinder.patients.id'), nullable=False, index=True)
     
     # Критерии поиска (JSON для гибкости)
     search_criteria = db.Column(db.JSON, nullable=False)

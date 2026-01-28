@@ -2,6 +2,7 @@
 Doctor Model - Врач
 """
 from app import db
+from app.models import get_table_args
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 import uuid
@@ -16,15 +17,13 @@ class Doctor(db.Model):
     У каждого врача свой календарь и расписание
     """
     __tablename__ = 'doctors'
-    # Schema только для PostgreSQL
-    if 'postgresql' in os.getenv('DATABASE_URL', ''):
-        __table_args__ = {'schema': os.getenv('DB_SCHEMA', 'public')}
+    __table_args__ = get_table_args()
     
     # Primary Key
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Foreign Keys
-    practice_id = db.Column(UUID(as_uuid=True), db.ForeignKey('practices.id'), nullable=True, index=True)
+    practice_id = db.Column(UUID(as_uuid=True), db.ForeignKey('terminfinder.practices.id'), nullable=True, index=True)
     
     # Основная информация
     first_name = db.Column(db.String(100), nullable=False)

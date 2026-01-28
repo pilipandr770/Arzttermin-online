@@ -2,6 +2,7 @@
 Booking Model - Бронирование термина
 """
 from app import db
+from app.models import get_table_args
 from datetime import datetime, timedelta
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -17,16 +18,14 @@ class Booking(db.Model):
     Связывает пациента со слотом через Stripe оплату
     """
     __tablename__ = 'bookings'
-    # Schema только для PostgreSQL
-    if 'postgresql' in os.getenv('DATABASE_URL', ''):
-        __table_args__ = {'schema': os.getenv('DB_SCHEMA', 'public')}
+    __table_args__ = get_table_args()
     
     # Primary Key
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Foreign Keys
-    timeslot_id = db.Column(UUID(as_uuid=True), db.ForeignKey('time_slots.id'), nullable=False, unique=True, index=True)
-    patient_id = db.Column(UUID(as_uuid=True), db.ForeignKey('patients.id'), nullable=False, index=True)
+    timeslot_id = db.Column(UUID(as_uuid=True), db.ForeignKey('terminfinder.time_slots.id'), nullable=False, unique=True, index=True)
+    patient_id = db.Column(UUID(as_uuid=True), db.ForeignKey('terminfinder.patients.id'), nullable=False, index=True)
     
     # Статус
     status = db.Column(db.String(20), default='confirmed', nullable=False, index=True)

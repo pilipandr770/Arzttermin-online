@@ -32,6 +32,9 @@ def create_app(config_name='default'):
     jwt.init_app(app)
     CORS(app)
     
+    # Импорт моделей для регистрации в SQLAlchemy
+    from app import models
+    
     # Настройка Celery
     celery.conf.update(
         broker_url=app.config['CELERY_BROKER_URL'],

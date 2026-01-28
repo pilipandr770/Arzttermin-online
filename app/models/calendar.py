@@ -2,6 +2,7 @@
 Calendar и TimeSlot Models - Календарь и временные слоты
 """
 from app import db
+from app.models import get_table_args
 from datetime import datetime, timedelta
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 import uuid
@@ -16,15 +17,13 @@ class Calendar(db.Model):
     Определяет рабочие часы и правила создания слотов
     """
     __tablename__ = 'calendars'
-    # Schema только для PostgreSQL
-    if 'postgresql' in os.getenv('DATABASE_URL', ''):
-        __table_args__ = {'schema': os.getenv('DB_SCHEMA', 'public')}
+    __table_args__ = get_table_args()
     
     # Primary Key
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Foreign Keys
-    doctor_id = db.Column(UUID(as_uuid=True), db.ForeignKey('doctors.id'), nullable=False, unique=True, index=True)
+    doctor_id = db.Column(UUID(as_uuid=True), db.ForeignKey('terminfinder.doctors.id'), nullable=False, unique=True, index=True)
     
     # Рабочие часы (JSON структура)
     working_hours = db.Column(db.Text, nullable=False)
@@ -160,12 +159,13 @@ class TimeSlot(db.Model):
     Каждый слот может быть: free, booked, blocked
     """
     __tablename__ = 'time_slots'
+    __table_args__ = get_table_args()
     
     # Primary Key
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Foreign Keys
-    calendar_id = db.Column(UUID(as_uuid=True), db.ForeignKey('calendars.id'), nullable=False, index=True)
+    calendar_id = db.Column(UUID(as_uuid=True), db.ForeignKey('terminfinder.calendars.id'), nullable=False, index=True)
     
     # Время
     start_time = db.Column(db.DateTime, nullable=False, index=True)
@@ -185,11 +185,6 @@ class TimeSlot(db.Model):
     # Relationships
     calendar = db.relationship('Calendar', back_populates='time_slots')
     booking = db.relationship('Booking', back_populates='timeslot', uselist=False)
-    
-    # Индекс для быстрого поиска свободных слотов
-    __table_args__ = (
-        db.Index('idx_slot_calendar_time_status', 'calendar_id', 'start_time', 'status'),
-    )
     
     def __repr__(self):
         return f'<TimeSlot {self.start_time} - {self.status}>'
