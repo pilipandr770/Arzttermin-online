@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from app.models import Patient, Doctor
 from app import db
+from app.constants import SPECIALITIES
 import re
 
 bp = Blueprint('auth', __name__)
@@ -33,7 +34,7 @@ def doctor_login():
 @auth_web.route('/doctor/register')
 def doctor_register():
     """Страница регистрации для врачей"""
-    return render_template('auth/doctor_register.html')
+    return render_template('auth/doctor_register.html', specialities=SPECIALITIES)
 
 
 # API маршруты
