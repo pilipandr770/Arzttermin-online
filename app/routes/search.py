@@ -101,7 +101,11 @@ def get_available_doctors():
                 'id': str(practice.id),
                 'name': practice.name,
                 'city': address_json.get('city'),
-                'address': practice.address
+                'address': practice.address,
+                'website': practice.website,
+                'google_business_url': practice.google_business_url,
+                'phone': practice.phone,
+                'description': practice.description
             }
         
         doctors_list.append({

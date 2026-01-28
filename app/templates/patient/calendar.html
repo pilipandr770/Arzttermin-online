@@ -174,8 +174,12 @@ async function loadCalendar() {
         let calendarHtml = '<div class="row">';
 
         for (const doctor of data.doctors) {
-            const practiceName = doctor.practice ? doctor.practice.name : '';
-            const practiceCity = doctor.practice ? doctor.practice.city : '';
+            const practice = doctor.practice || {};
+            const practiceName = practice.name || '';
+            const practiceCity = practice.city || '';
+            const website = practice.website || '';
+            const googleBusiness = practice.google_business_url || '';
+            const phone = practice.phone || '';
 
             calendarHtml += `
                 <div class="col-md-6 col-lg-4 mb-3" id="calendar-doctor-card-${doctor.id}">
@@ -188,6 +192,15 @@ async function loadCalendar() {
                             <p class="text-primary mb-2 small">${doctor.speciality_display}</p>
                             ${practiceName ? `<p class="text-muted mb-1 small"><i class="bi bi-hospital"></i> ${practiceName}</p>` : ''}
                             ${practiceCity ? `<p class="text-muted mb-2 small"><i class="bi bi-geo-alt"></i> ${practiceCity}</p>` : ''}
+                            
+                            <!-- Quick Links -->
+                            ${(website || googleBusiness || phone) ? `
+                            <div class="mb-2 d-flex gap-2">
+                                ${website ? `<a href="${website}" target="_blank" class="btn btn-sm btn-outline-primary" title="Website"><i class="bi bi-globe"></i></a>` : ''}
+                                ${googleBusiness ? `<a href="${googleBusiness}" target="_blank" class="btn btn-sm btn-outline-info" title="Google Business"><i class="bi bi-google"></i></a>` : ''}
+                                ${phone ? `<a href="tel:${phone}" class="btn btn-sm btn-outline-secondary" title="Anrufen"><i class="bi bi-telephone"></i></a>` : ''}
+                            </div>
+                            ` : ''}
                             
                             <div class="mb-2">
                                 <span class="badge bg-success">

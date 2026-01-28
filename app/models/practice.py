@@ -47,6 +47,26 @@ class Practice(db.Model):
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
     
+    # Дополнительная информация для пациентов
+    website = db.Column(db.String(500), nullable=True)
+    google_business_url = db.Column(db.String(500), nullable=True)
+    description = db.Column(db.Text, nullable=True)  # Описание практики
+    opening_hours = db.Column(db.Text, nullable=True)  # JSON с часами работы
+    # Структура opening_hours:
+    # {
+    #     'monday': {'open': '08:00', 'close': '18:00'},
+    #     'tuesday': {'open': '08:00', 'close': '18:00'},
+    #     ...
+    # }
+    social_media = db.Column(db.Text, nullable=True)  # JSON с социальными сетями
+    # Структура social_media:
+    # {
+    #     'facebook': 'https://facebook.com/...',
+    #     'instagram': 'https://instagram.com/...',
+    #     'linkedin': 'https://linkedin.com/...'
+    # }
+    photos = db.Column(db.Text, nullable=True)  # JSON массив URL фотографий
+    
     # Статус верификации
     verified = db.Column(db.Boolean, default=False, nullable=False)
     verified_at = db.Column(db.DateTime, nullable=True)
@@ -106,6 +126,51 @@ class Practice(db.Model):
         """Полный адрес одной строкой"""
         addr = self.address_dict
         return f"{addr['street']}, {addr['plz']} {addr['city']}"
+    
+    @property
+    def opening_hours_dict(self):
+        """Получить часы работы как словарь"""
+        if self.opening_hours and isinstance(self.opening_hours, str):
+            return json.loads(self.opening_hours)
+        return self.opening_hours or {}
+    
+    @opening_hours_dict.setter
+    def opening_hours_dict(self, value):
+        """Установить часы работы как словарь"""
+        if isinstance(value, dict):
+            self.opening_hours = json.dumps(value)
+        else:
+            self.opening_hours = value
+    
+    @property
+    def social_media_dict(self):
+        """Получить социальные сети как словарь"""
+        if self.social_media and isinstance(self.social_media, str):
+            return json.loads(self.social_media)
+        return self.social_media or {}
+    
+    @social_media_dict.setter
+    def social_media_dict(self, value):
+        """Установить социальные сети как словарь"""
+        if isinstance(value, dict):
+            self.social_media = json.dumps(value)
+        else:
+            self.social_media = value
+    
+    @property
+    def photos_list(self):
+        """Получить фотографии как список"""
+        if self.photos and isinstance(self.photos, str):
+            return json.loads(self.photos)
+        return self.photos or []
+    
+    @photos_list.setter
+    def photos_list(self, value):
+        """Установить фотографии как список"""
+        if isinstance(value, list):
+            self.photos = json.dumps(value)
+        else:
+            self.photos = value
     
     # Relationships
     doctors = db.relationship('Doctor', back_populates='practice', cascade='all, delete-orphan')

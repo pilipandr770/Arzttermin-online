@@ -54,11 +54,13 @@ def create_app(config_name='default'):
     from app.routes.doctor import doctor_api
     from app.routes.patient import patient_api
     from app.routes.search import search_api
+    from app.routes.practice import practice_api
     
     app.register_blueprint(main_bp)
     app.register_blueprint(auth.bp, url_prefix='/api/auth')
     app.register_blueprint(auth_module.auth_web, name='auth_web')
-    app.register_blueprint(practice.bp, url_prefix='/api/practice')
+    app.register_blueprint(practice.bp, url_prefix='/practice')
+    app.register_blueprint(practice_api, url_prefix='/api/practice')
     app.register_blueprint(doctor_api, url_prefix='/api/doctors')
     app.register_blueprint(patient_api, url_prefix='/api/patient')
     app.register_blueprint(booking.bp, url_prefix='/api/bookings')
