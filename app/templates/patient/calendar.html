@@ -99,11 +99,18 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function loadDoctors() {
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+        window.location.href = '/patient/login';
+        return;
+    }
+    
     try {
         const response = await fetch('/api/patient/search/doctors', {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             }
         });
@@ -126,6 +133,13 @@ async function loadDoctors() {
 }
 
 async function loadCalendar() {
+    const token = localStorage.getItem('access_token');
+    
+    if (!token) {
+        window.location.href = '/patient/login';
+        return;
+    }
+    
     const speciality = document.getElementById('calendar-speciality').value;
     const doctorId = document.getElementById('calendar-doctor').value;
     const startDate = document.getElementById('calendar-start-date').value;

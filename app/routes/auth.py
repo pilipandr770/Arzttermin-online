@@ -158,7 +158,7 @@ def api_doctor_register():
         tax_number=tax_number,
         speciality=speciality,
         practice_id=practice_id,
-        is_verified=False  # Требует верификации
+        is_verified=True  # Для MVP - автоматически верифицируем
     )
     doctor.set_password(password)
     
