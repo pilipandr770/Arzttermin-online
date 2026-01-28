@@ -120,7 +120,7 @@ async function loadDashboard() {
     
     if (!token) {
         // Нет токена - перенаправляем на вход
-        window.location.href = '/auth/patient/login';
+        window.location.href = '/patient/login';
         return;
     }
     
@@ -181,7 +181,7 @@ async function loadDashboard() {
             // Токен истек или недействителен
             localStorage.removeItem('access_token');
             localStorage.removeItem('patient_id');
-            window.location.href = '/auth/patient/login';
+            window.location.href = '/patient/login';
         } else {
             throw new Error('Failed to load dashboard');
         }

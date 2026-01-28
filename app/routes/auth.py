@@ -93,9 +93,15 @@ def api_patient_register():
     patient.stripe_customer_id = f'test_customer_{patient.id}'
     db.session.commit()
     
+    # Создаем токены
+    access_token = create_access_token(identity={'id': str(patient.id), 'type': 'patient'})
+    refresh_token = create_refresh_token(identity={'id': str(patient.id), 'type': 'patient'})
+    
     return jsonify({
         'message': 'Patient erfolgreich registriert und verifiziert',
-        'patient_id': str(patient.id)
+        'patient_id': str(patient.id),
+        'access_token': access_token,
+        'refresh_token': refresh_token
     })
 
 

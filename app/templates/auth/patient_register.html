@@ -49,6 +49,11 @@ document.getElementById('patient-register-form').addEventListener('submit', asyn
         const data = await response.json();
         
         if (response.ok) {
+            // Сохраняем токены
+            if (data.access_token) {
+                localStorage.setItem('access_token', data.access_token);
+                localStorage.setItem('user_type', 'patient');
+            }
             alert('Registrierung erfolgreich! Sie werden zur Verifizierung weitergeleitet.');
             // TODO: Интеграция с Stripe для оплаты верификации
             window.location.href = '/patient/dashboard';

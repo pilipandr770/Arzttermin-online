@@ -63,7 +63,7 @@ async function loadProfile() {
     const token = localStorage.getItem('access_token');
     
     if (!token) {
-        window.location.href = '/auth/patient/login';
+        window.location.href = '/patient/login';
         return;
     }
     
@@ -91,7 +91,7 @@ async function loadProfile() {
         } else if (response.status === 401) {
             // Токен истек или недействителен
             localStorage.removeItem('access_token');
-            window.location.href = '/auth/patient/login';
+            window.location.href = '/patient/login';
         } else {
             throw new Error('Failed to load profile');
         }

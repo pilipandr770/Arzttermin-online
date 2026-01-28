@@ -224,13 +224,14 @@ def api_get_bookings():
     if date_from:
         try:
             from_date = datetime.strptime(date_from, '%Y-%m-%d')
-            query = query.filter(Booking.timeslot.has(start_time >= from_date))
+            query = query.filter(Booking.timeslot.has(TimeSlot.start_time >= from_date))
         except ValueError:
             pass
     if date_to:
         try:
             to_date = datetime.strptime(date_to, '%Y-%m-%d')
-            query = query.filter(Booking.timeslot.has(start_time <= to_date))
+            to_date = to_date + timedelta(days=1)  # Include the entire day
+            query = query.filter(Booking.timeslot.has(TimeSlot.start_time <= to_date))
         except ValueError:
             pass
     
