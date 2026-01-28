@@ -290,10 +290,10 @@ async function bookSlotDirect(slotId, doctorId, date, time) {
         
         if (response.ok) {
             const data = await response.json();
-            alert(`Termin erfolgreich gebucht!\n\nBuchungscode: ${data.booking_code}\n${date} um ${time}`);
+            alert(`Termin erfolgreich gebucht!\n\nBuchungscode: ${data.booking_code || data.booking_id}\nArzt: ${data.doctor_name}\n${data.date} um ${data.time}\n\nSie werden zu Ihren Terminen weitergeleitet...`);
             
-            // Обновляем список докторов
-            searchDoctors();
+            // Перенаправляем на страницу букингов
+            window.location.href = '/patient/bookings';
         } else {
             const error = await response.json();
             alert('Fehler: ' + error.error);

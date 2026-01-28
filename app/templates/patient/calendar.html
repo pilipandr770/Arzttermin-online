@@ -351,9 +351,10 @@ async function bookSlot() {
         const data = await response.json();
 
         if (response.ok) {
-            alert('Termin erfolgreich gebucht!');
+            alert(`Termin erfolgreich gebucht!\n\nBuchungscode: ${data.booking_code || data.booking_id}\nArzt: ${data.doctor_name}\n${data.date} um ${data.time}\n\nSie werden zu Ihren Terminen weitergeleitet...`);
             bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
-            loadCalendar(); // Перезагружаем календарь
+            // Перенаправляем на страницу букингов
+            window.location.href = '/patient/bookings';
         } else {
             alert(data.error || 'Fehler beim Buchen des Termins');
         }

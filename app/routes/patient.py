@@ -499,6 +499,7 @@ def api_book_slot():
     return jsonify({
         'message': 'Booking created successfully',
         'booking_id': str(booking.id),
+        'booking_code': booking.booking_code,
         'doctor_name': f'{slot.calendar.doctor.first_name} {slot.calendar.doctor.last_name}',
         'date': slot.start_time.strftime('%Y-%m-%d'),
         'time': slot.start_time.strftime('%H:%M')
