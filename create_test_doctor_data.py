@@ -104,8 +104,7 @@ def create_test_doctor_data():
             db.session.commit()
             print("Created test patient")
 
-        print("✅ Test data creation completed!")
+        print("Test data creation completed!")
 
 if __name__ == '__main__':
-    create_test_doctor_data()</content>
-<parameter name="file_path">c:\Users\ПК\Downloads\terminfinder-mvp_1\terminfinder-mvp\create_test_doctor_data.py
+    create_test_doctor_data()
