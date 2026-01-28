@@ -132,14 +132,10 @@ async function loadDoctors() {
     }
 }
 
+// Переменная для отслеживания раскрытых карточек
+const expandedDoctorsCalendar = new Set();
+
 async function loadCalendar() {
-    const token = localStorage.getItem('access_token');
-    
-    if (!token) {
-        window.location.href = '/patient/login';
-        return;
-    }
-    
     const speciality = document.getElementById('calendar-speciality').value;
     const doctorId = document.getElementById('calendar-doctor').value;
     const startDate = document.getElementById('calendar-start-date').value;
@@ -154,46 +150,64 @@ async function loadCalendar() {
     calendarContent.innerHTML = '<div class="text-center py-5"><div class="spinner-border"></div><p>Lade Kalender...</p></div>';
 
     try {
-        // Получаем врачей по фильтрам
-        let url = '/api/patient/search/doctors?';
-        if (speciality) url += `speciality=${speciality}&`;
-        if (doctorId) url += `doctor_id=${doctorId}&`;
+        // Используем новый API для поиска с количеством слотов
+        const params = new URLSearchParams();
+        if (speciality) params.append('speciality', speciality);
+        if (doctorId) params.append('doctor_id', doctorId);
+        params.append('date_from', startDate);
+        params.append('date_to', endDate);
 
-        const doctorsResponse = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        const response = await fetch(`/api/search/doctors/available?${params}`);
 
-        if (!doctorsResponse.ok) {
+        if (!response.ok) {
             throw new Error('Failed to load doctors');
         }
 
-        const doctorsData = await doctorsResponse.json();
+        const data = await response.json();
 
-        if (doctorsData.doctors.length === 0) {
+        if (data.doctors.length === 0) {
             calendarContent.innerHTML = '<div class="text-center py-5"><i class="bi bi-search text-muted" style="font-size: 3rem;"></i><p class="text-muted mt-3">Keine Ärzte gefunden.</p></div>';
             return;
         }
 
-        // Создаем календарь
+        // Создаем компактный список врачей
         let calendarHtml = '<div class="row">';
 
-        for (const doctor of doctorsData.doctors) {
+        for (const doctor of data.doctors) {
+            const practiceName = doctor.practice ? doctor.practice.name : '';
+            const practiceCity = doctor.practice ? doctor.practice.city : '';
+
             calendarHtml += `
-                <div class="col-md-6 mb-4">
+                <div class="col-12 mb-3" id="calendar-doctor-card-${doctor.id}">
                     <div class="card">
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">${doctor.first_name} ${doctor.last_name}</h6>
-                            <small class="text-muted">${doctor.speciality}</small>
-                        </div>
                         <div class="card-body">
-                            <div id="doctor-slots-${doctor.id}">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h6 class="mb-1">
+                                        <i class="bi bi-person-circle text-primary"></i>
+                                        ${doctor.full_name}
+                                    </h6>
+                                    <p class="text-primary mb-1 small">${doctor.speciality_display}</p>
+                                    ${practiceName ? `<p class="text-muted mb-0 small"><i class="bi bi-hospital"></i> ${practiceName}</p>` : ''}
+                                    ${practiceCity ? `<p class="text-muted mb-0 small"><i class="bi bi-geo-alt"></i> ${practiceCity}</p>` : ''}
+                                </div>
+                                <div class="col-md-4 text-md-end">
+                                    <div class="mb-2">
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-calendar-check"></i> ${doctor.free_slots_count} freie Termine
+                                        </span>
+                                    </div>
+                                    <button class="btn btn-sm btn-primary" onclick="toggleCalendarDoctorSlots('${doctor.id}', '${startDate}', '${endDate}')" id="calendar-toggle-btn-${doctor.id}">
+                                        <i class="bi bi-chevron-down"></i> Termine anzeigen
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Контейнер для слотов -->
+                            <div id="calendar-slots-container-${doctor.id}" class="mt-3" style="display: none;">
+                                <hr>
                                 <div class="text-center">
-                                    <div class="spinner-border spinner-border-sm"></div>
-                                    <small>Lade Termine...</small>
+                                    <div class="spinner-border spinner-border-sm"></div> Lade Termine...
                                 </div>
                             </div>
                         </div>
@@ -205,65 +219,97 @@ async function loadCalendar() {
         calendarHtml += '</div>';
         calendarContent.innerHTML = calendarHtml;
 
-        // Загружаем слоты для каждого врача
-        for (const doctor of doctorsData.doctors) {
-            await loadDoctorSlots(doctor.id, startDate, endDate);
-        }
-
     } catch (error) {
         console.error('Error loading calendar:', error);
         calendarContent.innerHTML = '<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Fehler beim Laden des Kalenders.</div>';
     }
 }
 
-async function loadDoctorSlots(doctorId, startDate, endDate) {
+async function toggleCalendarDoctorSlots(doctorId, startDate, endDate) {
+    const container = document.getElementById(`calendar-slots-container-${doctorId}`);
+    const button = document.getElementById(`calendar-toggle-btn-${doctorId}`);
+    
+    // Если уже раскрыто - скрываем
+    if (expandedDoctorsCalendar.has(doctorId)) {
+        container.style.display = 'none';
+        button.innerHTML = '<i class="bi bi-chevron-down"></i> Termine anzeigen';
+        expandedDoctorsCalendar.delete(doctorId);
+        return;
+    }
+    
+    // Раскрываем и загружаем слоты
+    container.style.display = 'block';
+    button.innerHTML = '<i class="bi bi-chevron-up"></i> Termine ausblenden';
+    expandedDoctorsCalendar.add(doctorId);
+    
+    // Загружаем слоты через новый API
     try {
-        // Вычисляем количество дней между датами
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+        const params = new URLSearchParams();
+        params.append('date_from', startDate);
+        params.append('date_to', endDate);
+        
+        const response = await fetch(`/api/search/doctors/${doctorId}/slots?${params}`);
 
-        const response = await fetch(`/api/patient/slots/${doctorId}?from=${startDate}&days=${daysDiff}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        const slotsData = await response.json();
-        const slotsContainer = document.getElementById(`doctor-slots-${doctorId}`);
-
-        if (response.ok && slotsData.slots && Object.keys(slotsData.slots).length > 0) {
-            let slotsHtml = '<div class="row g-2">';
-
-            // Преобразуем объект slots в массив для отображения
-            Object.entries(slotsData.slots).forEach(([date, daySlots]) => {
-                daySlots.forEach(slot => {
-                    const slotDateTime = `${date}T${slot.time}:00`;
-                    const slotDate = new Date(slotDateTime);
-                    const formattedDate = slotDate.toLocaleDateString('de-DE');
-                    const formattedTime = slotDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-
-                    slotsHtml += `
-                        <div class="col-md-6">
-                            <button class="btn btn-outline-success btn-sm w-100" onclick="showBookingModal('${slot.id}', '${slotDateTime}', '${slotsData.doctor.name}')">
-                                <small>${formattedDate}<br>${formattedTime}</small>
-                            </button>
-                        </div>
-                    `;
-                });
-            });
-
-            slotsHtml += '</div>';
-            slotsContainer.innerHTML = slotsHtml;
+        if (response.ok) {
+            const data = await response.json();
+            displayCalendarDoctorSlots(doctorId, data);
         } else {
-            slotsContainer.innerHTML = '<small class="text-muted">Keine verfügbaren Termine in diesem Zeitraum.</small>';
+            container.innerHTML = '<div class="alert alert-danger">Fehler beim Laden der Termine</div>';
         }
     } catch (error) {
         console.error('Error loading slots:', error);
-        document.getElementById(`doctor-slots-${doctorId}`).innerHTML = '<small class="text-danger">Fehler beim Laden der Termine.</small>';
+        container.innerHTML = '<div class="alert alert-danger">Fehler beim Laden der Termine</div>';
     }
+}
+
+function displayCalendarDoctorSlots(doctorId, data) {
+    const container = document.getElementById(`calendar-slots-container-${doctorId}`);
+    
+    if (Object.keys(data.slots_by_date).length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">Keine Termine verfügbar</p>';
+        return;
+    }
+    
+    let html = '<div class="slots-list" style="max-height: 400px; overflow-y: auto;">';
+    
+    const sortedDates = Object.keys(data.slots_by_date).sort();
+    
+    sortedDates.forEach(date => {
+        const slots = data.slots_by_date[date];
+        const dateObj = new Date(date);
+        const formattedDate = dateObj.toLocaleDateString('de-DE', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        html += `
+            <div class="mb-3">
+                <h6 class="text-primary">
+                    <i class="bi bi-calendar3"></i> ${formattedDate}
+                </h6>
+                <div class="row g-2">
+        `;
+        
+        slots.forEach(slot => {
+            html += `
+                <div class="col-6 col-md-3">
+                    <button class="btn btn-outline-success btn-sm w-100" onclick="showBookingModal('${slot.id}', '${date}T${slot.start_time}:00', '${data.doctor.first_name} ${data.doctor.last_name}')">
+                        <i class="bi bi-clock"></i> ${slot.start_time}
+                    </button>
+                </div>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 function showBookingModal(slotId, startTime, doctorName) {
