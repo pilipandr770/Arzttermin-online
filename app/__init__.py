@@ -1,4 +1,4 @@
-"""
+﻿"""
 Инициализация Flask приложения и расширений
 """
 from flask import Flask
@@ -53,6 +53,7 @@ def create_app(config_name='default'):
     from app.routes import auth as auth_module
     from app.routes.doctor import doctor_api
     from app.routes.patient import patient_api
+    from app.routes.search import search_api
     
     app.register_blueprint(main_bp)
     app.register_blueprint(auth.bp, url_prefix='/api/auth')
@@ -61,11 +62,12 @@ def create_app(config_name='default'):
     app.register_blueprint(doctor_api, url_prefix='/api/doctors')
     app.register_blueprint(patient_api, url_prefix='/api/patient')
     app.register_blueprint(booking.bp, url_prefix='/api/bookings')
-    app.register_blueprint(search.bp, url_prefix='/api/search')
+    app.register_blueprint(search_api, url_prefix='/api/search')
     
     # Регистрация веб-интерфейсов (без /api префикса)
     app.register_blueprint(doctor.bp, name='doctor_web')
     app.register_blueprint(patient.bp, name='patient_web')
+    app.register_blueprint(search.bp, name='search_web')
     
     # Health check endpoint
     @app.route('/health')

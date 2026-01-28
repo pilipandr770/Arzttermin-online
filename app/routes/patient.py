@@ -1,4 +1,4 @@
-"""
+﻿"""
 Маршруты пациентов
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
@@ -33,11 +33,103 @@ def api_dashboard():
     if not patient:
         return jsonify({'error': 'Patient not found'}), 404
     
-    # Получаем активные бронирования
-    active_bookings = Booking.query.filter_by(
-        patient_id=patient.id,
-        status='confirmed'
-    ).order_by(Booking.created_at.desc()).limit(5).all()
+    now = datetime.utcnow()
+    
+    # Получаем следующий предстоящий термин
+    next_booking = Booking.query.join(TimeSlot).filter(
+        Booking.patient_id == patient.id,
+        Booking.status == 'confirmed',
+        TimeSlot.start_time > now
+    ).order_by(TimeSlot.start_time).first()
+    
+    next_appointment = None
+    if next_booking:
+        doctor = next_booking.timeslot.calendar.doctor
+        practice = doctor.practice
+        
+        next_appointment = {
+            'id': str(next_booking.id),
+            'booking_code': next_booking.booking_code,
+            'date': next_booking.timeslot.start_time.strftime('%Y-%m-%d'),
+            'time': next_booking.timeslot.start_time.strftime('%H:%M'),
+            'datetime': next_booking.timeslot.start_time.isoformat(),
+            'doctor': {
+                'id': str(doctor.id),
+                'name': f'{doctor.first_name} {doctor.last_name}',
+                'speciality': doctor.speciality,
+                'speciality_display': doctor.get_speciality_display()
+            },
+            'practice': {
+                'name': practice.name if practice else None,
+                'address': practice.address if practice else None,
+                'phone': practice.phone if practice else None,
+                'city': practice.city if practice else None
+            } if practice else None,
+            'cancellable': next_booking.can_be_cancelled(),
+            'cancellable_until': next_booking.cancellable_until.isoformat() if next_booking.cancellable_until else None
+        }
+    
+    # Получаем историю (последние 5 завершенных или отмененных терминов)
+    history_bookings = Booking.query.join(TimeSlot).filter(
+        Booking.patient_id == patient.id,
+        Booking.status.in_(['completed', 'cancelled'])
+    ).order_by(TimeSlot.start_time.desc()).limit(5).all()
+    
+    history = []
+    for booking in history_bookings:
+        doctor = booking.timeslot.calendar.doctor
+        history.append({
+            'id': str(booking.id),
+            'date': booking.timeslot.start_time.strftime('%Y-%m-%d'),
+            'time': booking.timeslot.start_time.strftime('%H:%M'),
+            'doctor_name': f'{doctor.first_name} {doctor.last_name}',
+            'speciality': doctor.get_speciality_display(),
+            'status': booking.status
+        })
+    
+    # Рекомендованные врачи (если есть последний термин)
+    recommended_doctors = []
+    if next_booking or history_bookings:
+        # Берем специальность из последнего термина
+        last_speciality = None
+        if next_booking:
+            last_speciality = next_booking.timeslot.calendar.doctor.speciality
+        elif history_bookings:
+            last_speciality = history_bookings[0].timeslot.calendar.doctor.speciality
+        
+        if last_speciality:
+            # Находим других врачей той же специальности с доступными слотами
+            from sqlalchemy import func
+            
+            # Подзапрос для подсчета свободных слотов
+            from app.models import Calendar
+            
+            recommended = db.session.query(Doctor).join(Calendar).join(TimeSlot).filter(
+                Doctor.speciality == last_speciality,
+                Doctor.is_verified == True,
+                TimeSlot.status == 'available',
+                TimeSlot.start_time > now
+            ).group_by(Doctor.id).limit(3).all()
+            
+            for doc in recommended:
+                # Подсчитываем свободные слоты для каждого врача
+                free_count = TimeSlot.query.filter(
+                    TimeSlot.calendar_id == doc.calendar.id,
+                    TimeSlot.status == 'available',
+                    TimeSlot.start_time > now
+                ).count()
+                
+                recommended_doctors.append({
+                    'id': str(doc.id),
+                    'name': f'{doc.first_name} {doc.last_name}',
+                    'speciality': doc.speciality,
+                    'speciality_display': doc.get_speciality_display(),
+                    'free_slots_count': free_count,
+                    'practice': {
+                        'name': doc.practice.name if doc.practice else None,
+                        'city': doc.practice.city if doc.practice else None
+                    } if doc.practice else None
+                })
     
     return jsonify({
         'patient': {
@@ -47,16 +139,9 @@ def api_dashboard():
             'total_bookings': patient.total_bookings,
             'attended_appointments': patient.attended_appointments
         },
-        'active_bookings': [{
-            'id': str(booking.id),
-            'booking_code': booking.booking_code,
-            'doctor_name': booking.timeslot.calendar.doctor.first_name + ' ' + booking.timeslot.calendar.doctor.last_name if booking.timeslot and booking.timeslot.calendar and booking.timeslot.calendar.doctor else 'Unknown',
-            'practice_name': booking.timeslot.calendar.doctor.practice.name if booking.timeslot and booking.timeslot.calendar and booking.timeslot.calendar.doctor and booking.timeslot.calendar.doctor.practice else 'Unknown',
-            'date': booking.timeslot.start_time.strftime('%Y-%m-%d') if booking.timeslot else '',
-            'time': booking.timeslot.start_time.strftime('%H:%M') if booking.timeslot else '',
-            'status': booking.status,
-            'cancellable': booking.can_be_cancelled()
-        } for booking in active_bookings]
+        'next_appointment': next_appointment,
+        'history': history,
+        'recommended_doctors': recommended_doctors
     })
 
 

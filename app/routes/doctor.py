@@ -1,4 +1,4 @@
-"""
+﻿"""
 Маршруты врачей
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
@@ -44,13 +44,61 @@ def api_dashboard():
     # Получаем календарь врача
     calendar = doctor.calendar
     
-    # Получаем предстоящие бронирования
-    upcoming_bookings = []
+    # Сегодняшние данные
+    today = datetime.utcnow().date()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+    
+    today_appointments = []
+    next_appointment = None
+    
     if calendar:
-        upcoming_bookings = Booking.query.join(Booking.timeslot).filter(
-            Booking.timeslot.has(calendar_id=calendar.id),
-            Booking.status.in_(['confirmed', 'pending'])
-        ).order_by(Booking.created_at).limit(5).all()
+        # Получаем подтвержденные бронирования на сегодня
+        today_bookings = Booking.query.join(TimeSlot).filter(
+            TimeSlot.calendar_id == calendar.id,
+            TimeSlot.start_time >= today_start,
+            TimeSlot.start_time <= today_end,
+            Booking.status == 'confirmed'
+        ).order_by(TimeSlot.start_time).all()
+        
+        now = datetime.utcnow()
+        for booking in today_bookings:
+            appointment_data = {
+                'id': str(booking.id),
+                'patient_name': booking.patient.name if booking.patient else 'Unknown',
+                'patient_phone': booking.patient.phone if booking.patient else 'Unknown',
+                'time': booking.timeslot.start_time.strftime('%H:%M'),
+                'start_time': booking.timeslot.start_time.isoformat(),
+                'status': booking.status
+            }
+            today_appointments.append(appointment_data)
+            
+            # Найти следующий термин
+            if not next_appointment and booking.timeslot.start_time > now:
+                next_appointment = appointment_data
+        
+        # Статистика за эту неделю
+        week_start = today - timedelta(days=today.weekday())
+        week_end = week_start + timedelta(days=7)
+        
+        week_slots = TimeSlot.query.filter(
+            TimeSlot.calendar_id == calendar.id,
+            TimeSlot.start_time >= week_start,
+            TimeSlot.start_time < week_end
+        ).all()
+        
+        total_slots = len(week_slots)
+        booked_slots = sum(1 for slot in week_slots if slot.status == 'booked')
+        available_slots = sum(1 for slot in week_slots if slot.status == 'available')
+        blocked_slots = sum(1 for slot in week_slots if slot.status == 'blocked')
+        
+        fill_rate = round((booked_slots / total_slots * 100) if total_slots > 0 else 0, 1)
+    else:
+        total_slots = 0
+        booked_slots = 0
+        available_slots = 0
+        blocked_slots = 0
+        fill_rate = 0
     
     return jsonify({
         'doctor': {
@@ -60,19 +108,24 @@ def api_dashboard():
             'is_verified': doctor.is_verified,
             'has_calendar': calendar is not None
         },
+        'today': {
+            'appointments_count': len(today_appointments),
+            'appointments': today_appointments,
+            'next_appointment': next_appointment
+        },
+        'this_week': {
+            'total_slots': total_slots,
+            'booked_slots': booked_slots,
+            'available_slots': available_slots,
+            'blocked_slots': blocked_slots,
+            'fill_rate': fill_rate
+        },
         'calendar': {
             'exists': calendar is not None,
             'working_hours': json.loads(calendar.working_hours) if calendar else {},
             'slot_duration': calendar.slot_duration if calendar else 30,
             'buffer_time': calendar.buffer_time if calendar else 5
-        } if calendar else {'exists': False},
-        'upcoming_bookings': [{
-            'id': str(booking.id),
-            'patient_name': booking.patient.name if booking.patient else 'Unknown',
-            'date': booking.timeslot.start_time.strftime('%Y-%m-%d'),
-            'time': booking.timeslot.start_time.strftime('%H:%M'),
-            'status': booking.status
-        } for booking in upcoming_bookings]
+        } if calendar else {'exists': False}
     })
 
 
@@ -540,3 +593,213 @@ def api_generate_slots():
         'message': f'Generated {len(generated_slots)} time slots',
         'generated_slots': generated_slots
     })
+
+
+@doctor_api.route('/calendar/close-day', methods=['POST'])
+@jwt_required()
+def api_close_day():
+    """
+    API: Закрыть день (заблокировать все слоты на день)
+    
+    Request body:
+    - date: дата в формате YYYY-MM-DD
+    - reason: причина (опционально)
+    """
+    identity = get_jwt_identity()
+    if identity.get('type') != 'doctor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    doctor = Doctor.query.get(uuid.UUID(identity['id']))
+    if not doctor or not doctor.calendar:
+        return jsonify({'error': 'Calendar not found'}), 404
+    
+    data = request.get_json()
+    if not data or 'date' not in data:
+        return jsonify({'error': 'Date is required'}), 400
+    
+    try:
+        target_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        start_of_day = datetime.combine(target_date, datetime.min.time())
+        end_of_day = datetime.combine(target_date, datetime.max.time())
+        
+        # Получаем все слоты на этот день
+        slots = TimeSlot.query.filter(
+            TimeSlot.calendar_id == doctor.calendar.id,
+            TimeSlot.start_time >= start_of_day,
+            TimeSlot.start_time <= end_of_day
+        ).all()
+        
+        blocked_count = 0
+        booked_count = 0
+        
+        for slot in slots:
+            if slot.status == 'available':
+                slot.status = 'blocked'
+                blocked_count += 1
+            elif slot.status == 'booked':
+                booked_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Day closed successfully',
+            'date': data['date'],
+            'blocked_slots': blocked_count,
+            'booked_slots': booked_count,
+            'warning': f'{booked_count} slots have existing bookings' if booked_count > 0 else None
+        })
+    
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@doctor_api.route('/analytics', methods=['GET'])
+@jwt_required()
+def api_analytics():
+    """
+    API: Получить аналитику врача
+    
+    Query params:
+    - period: week, month, year (default: week)
+    """
+    identity = get_jwt_identity()
+    if identity.get('type') != 'doctor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    doctor = Doctor.query.get(uuid.UUID(identity['id']))
+    if not doctor or not doctor.calendar:
+        return jsonify({'error': 'Calendar not found'}), 404
+    
+    period = request.args.get('period', 'week')
+    
+    # Определяем временной диапазон
+    now = datetime.utcnow()
+    if period == 'week':
+        start_date = now - timedelta(days=7)
+    elif period == 'month':
+        start_date = now - timedelta(days=30)
+    elif period == 'year':
+        start_date = now - timedelta(days=365)
+    else:
+        start_date = now - timedelta(days=7)
+    
+    # Получаем все слоты за период
+    all_slots = TimeSlot.query.filter(
+        TimeSlot.calendar_id == doctor.calendar.id,
+        TimeSlot.start_time >= start_date,
+        TimeSlot.start_time <= now
+    ).all()
+    
+    # Получаем все бронирования за период
+    all_bookings = Booking.query.join(TimeSlot).filter(
+        TimeSlot.calendar_id == doctor.calendar.id,
+        TimeSlot.start_time >= start_date,
+        TimeSlot.start_time <= now
+    ).all()
+    
+    # Статистика
+    total_slots = len(all_slots)
+    booked_slots = sum(1 for slot in all_slots if slot.status == 'booked')
+    available_slots = sum(1 for slot in all_slots if slot.status == 'available')
+    blocked_slots = sum(1 for slot in all_slots if slot.status == 'blocked')
+    
+    total_appointments = len(all_bookings)
+    confirmed_appointments = sum(1 for b in all_bookings if b.status == 'confirmed')
+    completed_appointments = sum(1 for b in all_bookings if b.status == 'completed')
+    cancelled_appointments = sum(1 for b in all_bookings if b.status == 'cancelled')
+    no_show_appointments = sum(1 for b in all_bookings if b.status == 'no_show')
+    
+    fill_rate = round((booked_slots / total_slots * 100) if total_slots > 0 else 0, 1)
+    no_show_rate = round((no_show_appointments / completed_appointments * 100) if completed_appointments > 0 else 0, 1)
+    cancellation_rate = round((cancelled_appointments / total_appointments * 100) if total_appointments > 0 else 0, 1)
+    
+    # Распределение по дням недели
+    bookings_by_day = {
+        'monday': 0, 'tuesday': 0, 'wednesday': 0, 
+        'thursday': 0, 'friday': 0, 'saturday': 0, 'sunday': 0
+    }
+    day_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    
+    for booking in all_bookings:
+        if booking.status in ['confirmed', 'completed']:
+            day_name = day_names[booking.timeslot.start_time.weekday()]
+            bookings_by_day[day_name] += 1
+    
+    return jsonify({
+        'period': {
+            'type': period,
+            'start_date': start_date.strftime('%Y-%m-%d'),
+            'end_date': now.strftime('%Y-%m-%d')
+        },
+        'slots': {
+            'total': total_slots,
+            'booked': booked_slots,
+            'available': available_slots,
+            'blocked': blocked_slots,
+            'fill_rate': fill_rate
+        },
+        'appointments': {
+            'total': total_appointments,
+            'confirmed': confirmed_appointments,
+            'completed': completed_appointments,
+            'cancelled': cancelled_appointments,
+            'no_show': no_show_appointments,
+            'no_show_rate': no_show_rate,
+            'cancellation_rate': cancellation_rate
+        },
+        'bookings_by_day': bookings_by_day
+    })
+    """
+    API: Открыть день (разблокировать все слоты на день)
+    
+    Request body:
+    - date: дата в формате YYYY-MM-DD
+    """
+    identity = get_jwt_identity()
+    if identity.get('type') != 'doctor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    doctor = Doctor.query.get(uuid.UUID(identity['id']))
+    if not doctor or not doctor.calendar:
+        return jsonify({'error': 'Calendar not found'}), 404
+    
+    data = request.get_json()
+    if not data or 'date' not in data:
+        return jsonify({'error': 'Date is required'}), 400
+    
+    try:
+        target_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        start_of_day = datetime.combine(target_date, datetime.min.time())
+        end_of_day = datetime.combine(target_date, datetime.max.time())
+        
+        # Получаем все заблокированные слоты на этот день
+        slots = TimeSlot.query.filter(
+            TimeSlot.calendar_id == doctor.calendar.id,
+            TimeSlot.start_time >= start_of_day,
+            TimeSlot.start_time <= end_of_day,
+            TimeSlot.status == 'blocked'
+        ).all()
+        
+        unblocked_count = 0
+        for slot in slots:
+            slot.status = 'available'
+            unblocked_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Day opened successfully',
+            'date': data['date'],
+            'unblocked_slots': unblocked_count
+        })
+    
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+ 
+ 
