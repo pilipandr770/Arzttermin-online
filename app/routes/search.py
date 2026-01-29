@@ -4,9 +4,11 @@
 from flask import Blueprint, jsonify, request
 from app.models import Doctor, Calendar, TimeSlot, Practice
 from app.constants import SPECIALITIES
+from app.constants.cities import MAJOR_GERMAN_CITIES, GERMAN_STATES
 from app import db
 from datetime import datetime, timedelta
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, or_
+import math
 
 bp = Blueprint('search', __name__)
 search_api = Blueprint('search_api', __name__)
@@ -73,7 +75,14 @@ def get_available_doctors():
         query = query.filter(Doctor.speciality == speciality)
     
     if city:
-        query = query.filter(Practice.city == city)
+        # Гибкий поиск по городу: проверяем вхождение в JSON поле address
+        # Поддерживаем частичное совпадение (case-insensitive)
+        city_filter = or_(
+            func.lower(Practice.address).like(f'%"city": "{city.lower()}"%'),
+            func.lower(Practice.address).like(f'%"city":"{city.lower()}"%'),
+            func.lower(Practice.address).like(f'%{city.lower()}%')
+        )
+        query = query.filter(city_filter)
     
     # Сортировка: врачи с большим количеством слотов в начале
     query = query.order_by(func.coalesce(free_slots_subquery.c.free_slots_count, 0).desc())
@@ -208,3 +217,118 @@ def get_doctor_slots(doctor_id):
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@search_api.route('/cities', methods=['GET'])
+def search_cities():
+    """
+    API: Autocomplete для городов
+    
+    Query params:
+    - q: поисковый запрос (минимум 2 символа)
+    - limit: количество результатов (default 10)
+    """
+    query = request.args.get('q', '').strip()
+    limit = int(request.args.get('limit', 10))
+    
+    if len(query) < 2:
+        return jsonify({'cities': MAJOR_GERMAN_CITIES[:limit]})
+    
+    # Поиск по началу названия (case-insensitive)
+    query_lower = query.lower()
+    matched_cities = [
+        city for city in MAJOR_GERMAN_CITIES 
+        if city.lower().startswith(query_lower)
+    ]
+    
+    # Если нет совпадений по началу, ищем по вхождению
+    if not matched_cities:
+        matched_cities = [
+            city for city in MAJOR_GERMAN_CITIES 
+            if query_lower in city.lower()
+        ]
+    
+    return jsonify({
+        'cities': matched_cities[:limit],
+        'query': query
+    })
+
+
+@search_api.route('/cities/nearby', methods=['POST'])
+def get_nearby_cities():
+    """
+    API: Найти ближайшие города по координатам
+    
+    Request body:
+    - latitude: широта пользователя
+    - longitude: долгота пользователя
+    - radius: радиус поиска в км (default 50)
+    """
+    data = request.get_json()
+    
+    if not data or 'latitude' not in data or 'longitude' not in data:
+        return jsonify({'error': 'Latitude and longitude are required'}), 400
+    
+    user_lat = float(data['latitude'])
+    user_lon = float(data['longitude'])
+    radius = float(data.get('radius', 50))  # км
+    
+    # Поиск практик в радиусе
+    # Используем формулу Haversine для расчета расстояния
+    practices = Practice.query.filter(
+        Practice.latitude.isnot(None),
+        Practice.longitude.isnot(None)
+    ).all()
+    
+    nearby_practices = []
+    for practice in practices:
+        distance = calculate_distance(
+            user_lat, user_lon,
+            practice.latitude, practice.longitude
+        )
+        
+        if distance <= radius:
+            nearby_practices.append({
+                'practice_id': str(practice.id),
+                'name': practice.name,
+                'city': practice.address_dict.get('city'),
+                'distance_km': round(distance, 2)
+            })
+    
+    # Сортируем по расстоянию
+    nearby_practices.sort(key=lambda x: x['distance_km'])
+    
+    return jsonify({
+        'practices': nearby_practices,
+        'user_location': {
+            'latitude': user_lat,
+            'longitude': user_lon
+        },
+        'radius_km': radius
+    })
+
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """
+    Расчет расстояния между двумя точками по формуле Haversine
+    Возвращает расстояние в километрах
+    """
+    # Радиус Земли в км
+    R = 6371.0
+    
+    # Перевод градусов в радианы
+    lat1_rad = math.radians(lat1)
+    lon1_rad = math.radians(lon1)
+    lat2_rad = math.radians(lat2)
+    lon2_rad = math.radians(lon2)
+    
+    # Разница координат
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    
+    # Формула Haversine
+    a = math.sin(dlat / 2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    
+    distance = R * c
+    return distance

@@ -284,3 +284,29 @@ footer {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
+
+/* ===== City Autocomplete ===== */
+#city-autocomplete {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: white;
+}
+
+#city-autocomplete .list-group-item {
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  padding: 0.625rem 1rem;
+  transition: background 0.2s ease;
+}
+
+#city-autocomplete .list-group-item:hover {
+  background: var(--bg-light);
+  color: var(--primary-blue);
+}
+
+#city-autocomplete .list-group-item:last-child {
+  border-bottom: none;
+}
