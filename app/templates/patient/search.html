@@ -48,6 +48,24 @@
         </div>
     </div>
 </div>
+
+<!-- Модальное окно для просмотра всех слотов врача -->
+<div class="modal fade" id="searchSlotsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="searchSlotsModalTitle">Verfügbare Termine</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="searchSlotsModalBody" style="max-height: 70vh; overflow-y: auto;">
+                <div class="text-center">
+                    <div class="spinner-border"></div>
+                    <p class="mt-2">Lade Termine...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block dashboard_scripts %}
@@ -235,8 +253,8 @@ async function displayDoctors(doctors) {
                         </div>
                         
                         ${doctor.free_slots_count > 0 ? `
-                        <button class="btn btn-sm btn-primary w-100" onclick="toggleDoctorSlots('${doctor.id}')" id="toggle-btn-${doctor.id}">
-                            <i class="bi bi-chevron-down"></i> Termine anzeigen
+                        <button class="btn btn-sm btn-primary w-100" onclick="openSearchSlotsModal('${doctor.id}', '${doctor.full_name}')">
+                            <i class="bi bi-calendar3"></i> Termine anzeigen
                         </button>
                         ` : alertExists ? `
                         <button class="btn btn-sm btn-success w-100" disabled>
@@ -247,14 +265,6 @@ async function displayDoctors(doctors) {
                             <i class="bi bi-bell"></i> Benachrichtigung einrichten
                         </button>
                         `}
-                        
-                        <!-- Контейнер для слотов (скрыт по умолчанию) -->
-                        <div id="slots-container-${doctor.id}" class="mt-3" style="display: none;">
-                            <hr>
-                            <div class="text-center">
-                                <div class="spinner-border spinner-border-sm"></div> Lade Termine...
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -271,6 +281,108 @@ function getSpecialityName(speciality) {
 
 // Переменная для отслеживания раскрытых карточек
 const expandedDoctors = new Set();
+
+async function openSearchSlotsModal(doctorId, doctorName) {
+    const modal = new bootstrap.Modal(document.getElementById('searchSlotsModal'));
+    const modalTitle = document.getElementById('searchSlotsModalTitle');
+    const modalBody = document.getElementById('searchSlotsModalBody');
+    
+    modalTitle.textContent = `Verfügbare Termine - ${doctorName}`;
+    modalBody.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p class="mt-2">Lade Termine...</p></div>';
+    
+    modal.show();
+    
+    try {
+        const response = await fetch(`/api/search/doctors/${doctorId}/slots`);
+
+        if (response.ok) {
+            const data = await response.json();
+            displaySearchSlotsInModal(data, doctorName);
+        } else {
+            modalBody.innerHTML = '<div class="alert alert-danger">Fehler beim Laden der Termine</div>';
+        }
+    } catch (error) {
+        console.error('Error loading slots:', error);
+        modalBody.innerHTML = '<div class="alert alert-danger">Fehler beim Laden der Termine</div>';
+    }
+}
+
+function displaySearchSlotsInModal(data, doctorName) {
+    const modalBody = document.getElementById('searchSlotsModalBody');
+    
+    if (Object.keys(data.slots_by_date).length === 0) {
+        modalBody.innerHTML = '<div class="text-center py-5"><i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i><p class="text-muted mt-3">Keine Termine verfügbar</p></div>';
+        return;
+    }
+    
+    let html = '';
+    const sortedDates = Object.keys(data.slots_by_date).sort();
+    
+    sortedDates.forEach(date => {
+        const slots = data.slots_by_date[date];
+        const dateObj = new Date(date);
+        const formattedDate = dateObj.toLocaleDateString('de-DE', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        html += `
+            <div class="mb-4">
+                <h5 class="text-primary mb-3">
+                    <i class="bi bi-calendar3"></i> ${formattedDate}
+                </h5>
+                <div class="d-flex flex-wrap gap-2">
+        `;
+        
+        slots.forEach(slot => {
+            html += `
+                <button class="btn btn-outline-primary" style="min-width: 100px;" onclick="bookSlotFromModal('${slot.id}', '${date}T${slot.start_time}:00', '${doctorName}')">
+                    <i class="bi bi-clock"></i> ${slot.start_time.substring(0, 5)}
+                </button>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    modalBody.innerHTML = html;
+}
+
+async function bookSlotFromModal(slotId, startTime, doctorName) {
+    if (!confirm(`Möchten Sie diesen Termin buchen?\n\nArzt: ${doctorName}\nZeit: ${new Date(startTime).toLocaleString('de-DE')}`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/patient/book', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ slot_id: slotId })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(`Termin erfolgreich gebucht!\n\nBuchungscode: ${data.booking_code || data.booking_id}\nArzt: ${data.doctor_name}\n${data.date} um ${data.time}`);
+            bootstrap.Modal.getInstance(document.getElementById('searchSlotsModal')).hide();
+            window.location.href = '/patient/bookings';
+        } else {
+            const error = await response.json();
+            alert('Fehler: ' + error.error);
+        }
+    } catch (error) {
+        console.error('Error booking slot:', error);
+        alert('Fehler bei der Buchung');
+    }
+}
 
 async function toggleDoctorSlots(doctorId) {
     const container = document.getElementById(`slots-container-${doctorId}`);
