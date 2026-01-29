@@ -28,6 +28,12 @@
 
     <footer class="bg-light py-4 mt-5">
         <div class="container text-center">
+            <div class="mb-3">
+                <a href="{{ url_for('legal.impressum') }}" class="text-muted mx-2">Impressum</a>
+                <a href="{{ url_for('legal.datenschutz') }}" class="text-muted mx-2">Datenschutz</a>
+                <a href="{{ url_for('legal.agb') }}" class="text-muted mx-2">AGB</a>
+                <a href="{{ url_for('legal.account_deletion') }}" class="text-muted mx-2">Konto löschen</a>
+            </div>
             <p>&copy; 2026 TerminFinder. Alle Rechte vorbehalten.</p>
             <p class="text-muted mb-1"><small>Projekt in Entwicklung</small></p>
             <p class="text-muted"><small>Kontakt: Andrii Pylypchuk | +49 160 95030120</small></p>

@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <h1 class="mb-4">Konto löschen</h1>
+            
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <strong>Wichtige Information:</strong> Die Löschung Ihres Kontos ist unwiderruflich. Alle Ihre Daten werden dauerhaft gelöscht.
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>Was wird gelöscht?</h2>
+                    <ul>
+                        <li><i class="bi bi-check-circle text-success"></i> Ihr Benutzerprofil (Name, Telefon, E-Mail)</li>
+                        <li><i class="bi bi-check-circle text-success"></i> Alle Ihre Terminbenachrichtigungen</li>
+                        <li><i class="bi bi-check-circle text-success"></i> Ihre Buchungshistorie (nach Ablauf der gesetzlichen Aufbewahrungsfrist)</li>
+                        <li><i class="bi bi-check-circle text-success"></i> Ihre Zugangsdaten</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>Was müssen Sie vor der Löschung beachten?</h2>
+                    
+                    <div class="alert alert-warning">
+                        <strong>Offene Termine:</strong> Bitte stornieren Sie alle gebuchten Termine vor der Kontolöschung.
+                    </div>
+                    
+                    <ul>
+                        <li>Stellen Sie sicher, dass keine aktiven Buchungen vorhanden sind</li>
+                        <li>Stornieren Sie alle offenen Terminbenachrichtigungen</li>
+                        <li>Laden Sie wichtige Daten herunter (falls benötigt)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>Gesetzliche Aufbewahrungsfristen</h2>
+                    <p>Aufgrund gesetzlicher Aufbewahrungspflichten (z.B. Steuerrecht) müssen wir bestimmte Daten für einen bestimmten Zeitraum aufbewahren:</p>
+                    <ul>
+                        <li><strong>Buchungsdaten:</strong> 10 Jahre (§ 147 AO - Abgabenordnung)</li>
+                        <li><strong>Zahlungsdaten:</strong> werden bei Stripe verarbeitet</li>
+                    </ul>
+                    <p>Nach Ablauf dieser Fristen werden auch diese Daten automatisch gelöscht.</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>Konto jetzt löschen</h2>
+                    
+                    {% if user_logged_in %}
+                    <div class="alert alert-danger">
+                        <strong>Achtung:</strong> Diese Aktion kann nicht rückgängig gemacht werden!
+                    </div>
+                    
+                    <form id="delete-account-form">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="confirm-deletion" required>
+                            <label class="form-check-label" for="confirm-deletion">
+                                Ich bestätige, dass ich alle Konsequenzen verstehe und mein Konto unwiderruflich löschen möchte.
+                            </label>
+                        </div>
+                        
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="confirm-bookings" required>
+                            <label class="form-check-label" for="confirm-bookings">
+                                Ich bestätige, dass ich keine offenen Buchungen habe oder diese storniert habe.
+                            </label>
+                        </div>
+                        
+                        <button type="button" class="btn btn-danger" onclick="deleteAccount()">
+                            <i class="bi bi-trash"></i> Konto unwiderruflich löschen
+                        </button>
+                        <a href="javascript:history.back()" class="btn btn-secondary ms-2">Abbrechen</a>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        Sie müssen angemeldet sein, um Ihr Konto zu löschen.
+                    </div>
+                    <a href="{{ url_for('auth_web.patient_login') }}" class="btn btn-primary">Zur Anmeldung</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h2>Alternative: Konto deaktivieren</h2>
+                    <p>Möchten Sie Ihr Konto vorübergehend deaktivieren statt es zu löschen? Kontaktieren Sie uns:</p>
+                    <p>
+                        <i class="bi bi-envelope"></i> E-Mail: info@terminfinder.de<br>
+                        <i class="bi bi-telephone"></i> Telefon: +49 160 95030120
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function deleteAccount() {
+    const confirm1 = document.getElementById('confirm-deletion').checked;
+    const confirm2 = document.getElementById('confirm-bookings').checked;
+    
+    if (!confirm1 || !confirm2) {
+        alert('Bitte bestätigen Sie beide Checkboxen.');
+        return;
+    }
+    
+    const finalConfirm = confirm('LETZTE WARNUNG: Möchten Sie Ihr Konto wirklich unwiderruflich löschen?\n\nDiese Aktion kann NICHT rückgängig gemacht werden!');
+    
+    if (!finalConfirm) {
+        return;
+    }
+    
+    try {
+        const userType = localStorage.getItem('user_type');
+        const endpoint = userType === 'patient' ? '/api/patient/delete-account' : '/api/doctor/delete-account';
+        
+        const response = await fetch(endpoint, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            alert('Ihr Konto wurde erfolgreich gelöscht.\n\nSie werden zur Startseite weitergeleitet.');
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_type');
+            window.location.href = '/';
+        } else {
+            const error = await response.json();
+            alert('Fehler beim Löschen des Kontos: ' + (error.error || 'Unbekannter Fehler'));
+        }
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        alert('Fehler beim Löschen des Kontos. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Support.');
+    }
+}
+</script>
+{% endblock %}

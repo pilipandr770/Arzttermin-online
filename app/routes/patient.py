@@ -669,3 +669,50 @@ def api_deactivate_alert(alert_id):
     db.session.commit()
     
     return jsonify({'message': 'Alert deactivated successfully'})
+
+
+@patient_api.route('/delete-account', methods=['DELETE'])
+@jwt_required()
+def api_delete_account():
+    """API: Delete patient account (GDPR compliance)"""
+    identity = get_current_user()
+    if identity.get('type') != 'patient':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    patient = Patient.query.get(uuid.UUID(identity['id']))
+    if not patient:
+        return jsonify({'error': 'Patient not found'}), 404
+    
+    # Check for active bookings
+    now = datetime.utcnow()
+    active_bookings = Booking.query.join(TimeSlot).filter(
+        Booking.patient_id == patient.id,
+        Booking.status.in_(['confirmed', 'pending']),
+        TimeSlot.start_time > now
+    ).count()
+    
+    if active_bookings > 0:
+        return jsonify({
+            'error': 'Cannot delete account with active bookings',
+            'message': 'Bitte stornieren Sie zuerst alle aktiven Buchungen.'
+        }), 400
+    
+    # Delete related data
+    # Note: Historical bookings are kept for legal compliance (10 years)
+    # but anonymized
+    
+    # Deactivate all alerts
+    PatientAlert.query.filter_by(patient_id=patient.id).update({'is_active': False})
+    
+    # Anonymize patient data
+    patient.name = f"Gelöschter Benutzer {patient.id}"
+    patient.phone = "deleted"
+    patient.password_hash = None
+    patient.is_active = False
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Account successfully deleted',
+        'info': 'Buchungsdaten werden gemäß gesetzlicher Aufbewahrungspflicht aufbewahrt.'
+    })

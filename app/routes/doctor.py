@@ -804,3 +804,61 @@ def api_analytics():
         return jsonify({'error': str(e)}), 500
 
 
+@doctor_api.route('/delete-account', methods=['DELETE'])
+@jwt_required()
+def api_delete_account():
+    """API: Delete doctor account (GDPR compliance)"""
+    identity = get_current_user()
+    if identity.get('type') != 'doctor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    doctor = Doctor.query.get(uuid.UUID(identity['id']))
+    if not doctor:
+        return jsonify({'error': 'Doctor not found'}), 404
+    
+    # Check for active bookings
+    now = datetime.utcnow()
+    if doctor.calendar:
+        active_bookings = Booking.query.join(TimeSlot).filter(
+            TimeSlot.calendar_id == doctor.calendar.id,
+            Booking.status.in_(['confirmed', 'pending']),
+            TimeSlot.start_time > now
+        ).count()
+        
+        if active_bookings > 0:
+            return jsonify({
+                'error': 'Cannot delete account with active bookings',
+                'message': 'Bitte stornieren Sie zuerst alle aktiven Buchungen.'
+            }), 400
+    
+    # Delete related data
+    # Note: Historical bookings are kept for legal compliance (10 years)
+    # but doctor data is anonymized
+    
+    # Delete future time slots
+    if doctor.calendar:
+        TimeSlot.query.filter(
+            TimeSlot.calendar_id == doctor.calendar.id,
+            TimeSlot.start_time > now
+        ).delete()
+    
+    # Anonymize doctor data
+    doctor.first_name = "Gelöscht"
+    doctor.last_name = str(doctor.id)
+    doctor.phone = "deleted"
+    doctor.password_hash = None
+    doctor.is_verified = False
+    
+    # Anonymize practice data if exists
+    if doctor.practice:
+        doctor.practice.name = "Gelöschte Praxis"
+        doctor.practice.phone = "deleted"
+        doctor.practice.email = None
+        doctor.practice.website = None
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Account successfully deleted',
+        'info': 'Buchungsdaten werden gemäß gesetzlicher Aufbewahrungspflicht aufbewahrt.'
+    })

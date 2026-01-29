@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <h1 class="mb-4">Allgemeine Geschäftsbedingungen (AGB)</h1>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>1. Geltungsbereich</h2>
+                    <p>Diese Allgemeinen Geschäftsbedingungen (AGB) gelten für die Nutzung der Plattform TerminFinder zur Vermittlung von Arztterminen zwischen Patienten und Ärzten/Praxen.</p>
+                    <p>Mit der Registrierung auf der Plattform erkennen Sie diese AGB an.</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>2. Leistungsbeschreibung</h2>
+                    
+                    <h3>2.1 Für Patienten</h3>
+                    <ul>
+                        <li>Suche nach verfügbaren Arztterminen</li>
+                        <li>Online-Buchung von Terminen</li>
+                        <li>Benachrichtigungen über freie Termine</li>
+                        <li>Verwaltung gebuchter Termine</li>
+                    </ul>
+                    
+                    <h3>2.2 Für Ärzte/Praxen</h3>
+                    <ul>
+                        <li>Verwaltung von Terminen und Verfügbarkeiten</li>
+                        <li>Verwaltung von Buchungen</li>
+                        <li>Praxisprofil mit Kontaktdaten</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>3. Registrierung und Nutzerkonto</h2>
+                    
+                    <h3>3.1 Registrierung</h3>
+                    <p>Die Nutzung der Plattform erfordert eine Registrierung. Bei der Registrierung sind wahrheitsgemäße Angaben zu machen.</p>
+                    
+                    <h3>3.2 Zugangsdaten</h3>
+                    <p>Der Nutzer ist verpflichtet, seine Zugangsdaten geheim zu halten und vor dem Zugriff Dritter zu schützen.</p>
+                    
+                    <h3>3.3 Kontolöschung</h3>
+                    <p>Nutzer können ihr Konto jederzeit löschen. Siehe <a href="{{ url_for('legal.account_deletion') }}">Kontolöschung</a>.</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>4. Terminbuchung und Zahlung</h2>
+                    
+                    <h3>4.1 Buchungsvorgang</h3>
+                    <p>Patienten können verfügbare Termine online buchen. Die Buchung wird mit einer Kaution bestätigt.</p>
+                    
+                    <h3>4.2 Kaution</h3>
+                    <p>Bei der Buchung wird eine Kaution über Stripe eingezogen. Diese dient als Sicherheit gegen Nichterscheinen (No-Show).</p>
+                    <ul>
+                        <li>Bei Wahrnehmung des Termins wird die Kaution zurückerstattet</li>
+                        <li>Bei Nichterscheinen ohne Absage wird die Kaution einbehalten</li>
+                        <li>Bei rechtzeitiger Stornierung (mindestens 24 Stunden vorher) wird die Kaution zurückerstattet</li>
+                    </ul>
+                    
+                    <h3>4.3 Stornierung</h3>
+                    <p>Termine können bis 24 Stunden vor dem Termin kostenfrei storniert werden. Bei späteren Stornierungen oder Nichterscheinen wird die Kaution einbehalten.</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>5. Pflichten der Nutzer</h2>
+                    
+                    <h3>5.1 Patienten</h3>
+                    <ul>
+                        <li>Wahrheitsgemäße Angabe von Kontaktdaten</li>
+                        <li>Pünktliches Erscheinen zu Terminen</li>
+                        <li>Rechtzeitige Absage bei Verhinderung</li>
+                    </ul>
+                    
+                    <h3>5.2 Ärzte/Praxen</h3>
+                    <ul>
+                        <li>Aktuelle Pflege der Verfügbarkeiten</li>
+                        <li>Einhaltung gebuchter Termine</li>
+                        <li>Professionelle Behandlung der Patienten</li>
+                        <li>Nachweis der ärztlichen Zulassung</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>6. Haftung</h2>
+                    
+                    <h3>6.1 Haftungsbeschränkung</h3>
+                    <p>TerminFinder ist eine Vermittlungsplattform. Die ärztliche Behandlung erfolgt ausschließlich zwischen Patient und Arzt. TerminFinder übernimmt keine Haftung für:</p>
+                    <ul>
+                        <li>Die Qualität der ärztlichen Behandlung</li>
+                        <li>Nichterscheinen oder Verspätung von Patienten oder Ärzten</li>
+                        <li>Fehlerhafte Angaben in Profilen</li>
+                    </ul>
+                    
+                    <h3>6.2 Höhere Gewalt</h3>
+                    <p>TerminFinder haftet nicht für Ausfälle der Plattform aufgrund höherer Gewalt oder technischer Störungen.</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>7. Datenschutz</h2>
+                    <p>Die Verarbeitung personenbezogener Daten erfolgt gemäß unserer <a href="{{ url_for('legal.datenschutz') }}">Datenschutzerklärung</a>.</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>8. Sperrung und Kündigung</h2>
+                    
+                    <h3>8.1 Sperrung durch TerminFinder</h3>
+                    <p>TerminFinder kann Nutzerkonten bei Verstößen gegen diese AGB sperren oder löschen.</p>
+                    
+                    <h3>8.2 Kündigung durch Nutzer</h3>
+                    <p>Nutzer können ihr Konto jederzeit kündigen. Siehe <a href="{{ url_for('legal.account_deletion') }}">Kontolöschung</a>.</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>9. Änderungen der AGB</h2>
+                    <p>TerminFinder behält sich vor, diese AGB zu ändern. Änderungen werden per E-Mail oder auf der Plattform bekanntgegeben. Widerspricht der Nutzer nicht innerhalb von 4 Wochen, gelten die neuen AGB als akzeptiert.</p>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2>10. Schlussbestimmungen</h2>
+                    <p>Es gilt das Recht der Bundesrepublik Deutschland. Gerichtsstand ist Frankfurt am Main.</p>
+                    <p>Sollten einzelne Bestimmungen dieser AGB unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.</p>
+                </div>
+            </div>
+
+            <p class="text-muted"><small>Stand: Januar 2026</small></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
