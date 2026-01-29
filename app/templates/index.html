@@ -3,12 +3,15 @@
 {% block content %}
 <section class="hero bg-primary text-white py-5">
     <div class="container">
-        <div class="row">
-            <div class="col-lg-8">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
                 <h1 class="display-4 fw-bold">TerminFinder</h1>
                 <p class="lead">KI-gestützte Terminbuchung für Ärzte in Deutschland</p>
                 <p class="mb-4">Intelligente System mit automatischen Benachrichtigungen, Stripe-Zahlungen und No-Show-Schutz.</p>
                 <a href="#user-type" class="btn btn-light btn-lg">Jetzt starten</a>
+            </div>
+            <div class="col-lg-6">
+                <img src="{{ url_for('static', filename='images/hero-image.png') }}" alt="TerminFinder Hero" class="img-fluid rounded shadow">
             </div>
         </div>
     </div>
