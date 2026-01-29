@@ -25,6 +25,10 @@ def api_get_practice_profile():
     """API: Получить информацию о практике врача"""
     identity = get_jwt_identity()
     
+    # Проверяем, что это врач
+    if identity.get('type') != 'doctor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
     # Получаем доктора
     import uuid
     doctor = Doctor.query.get(uuid.UUID(identity['id']))
@@ -63,6 +67,10 @@ def api_update_practice_profile():
     """API: Обновить информацию о практике"""
     identity = get_jwt_identity()
     data = request.get_json()
+    
+    # Проверяем, что это врач
+    if identity.get('type') != 'doctor':
+        return jsonify({'error': 'Unauthorized'}), 403
     
     # Получаем доктора и проверяем права
     import uuid
