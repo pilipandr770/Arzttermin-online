@@ -2,7 +2,8 @@
 Маршруты врачей
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity; from app.utils.jwt_helpers import get_current_user
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.jwt_helpers import get_current_user
 from app.models.doctor import Doctor
 from app.models.calendar import Calendar
 from app.models.booking import Booking
