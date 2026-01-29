@@ -1,4 +1,4 @@
-"""
+﻿"""
 PatientAlert Model - Уведомления пациентов о свободных слотах
 """
 from app import db

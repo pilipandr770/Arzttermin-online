@@ -1,4 +1,4 @@
-"""
+﻿"""
 Маршруты бронирований
 """
 from flask import Blueprint, jsonify, request

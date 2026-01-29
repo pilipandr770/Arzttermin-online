@@ -1,4 +1,4 @@
-"""
+﻿"""
 Doctor Model - Врач
 """
 from app import db
