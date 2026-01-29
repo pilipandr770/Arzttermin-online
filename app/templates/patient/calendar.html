@@ -432,12 +432,14 @@ async function createSearchAlert() {
         
         if (response.ok) {
             alert('Benachrichtigung erfolgreich eingerichtet!\\n\\nSie werden informiert, sobald ein Termin verfügbar wird.\\n\\nSie können Ihre Benachrichtigungen im Dashboard verwalten.');
-            window.location.href = '/patient/dashboard';
+            clearCalendarFilters();
+            loadCalendar();
         } else {
             const error = await response.json();
             if (error.error === 'Alert already exists for this doctor/speciality') {
                 alert('Sie haben bereits eine Benachrichtigung für diese Suche eingerichtet.\\n\\nSie können sie in Ihrem Dashboard verwalten.');
-                window.location.href = '/patient/dashboard';
+                clearCalendarFilters();
+                loadCalendar();
             } else {
                 alert('Fehler: ' + (error.error || 'Konnte Benachrichtigung nicht erstellen'));
             }
@@ -448,10 +450,10 @@ async function createSearchAlert() {
     }
 }
 
-// Функция для очистки фильтров
+// Функция для очистки фильтров и результатов
 function clearFilters() {
     clearCalendarFilters();
-    loadCalendar();
+    document.getElementById('calendar-content').innerHTML = '<div class="text-center py-5 text-muted"><p>Wählen Sie Ihre Suchkriterien und klicken Sie auf "Kalender laden"</p></div>';
 }
 
 // Функция для получения названия специальности

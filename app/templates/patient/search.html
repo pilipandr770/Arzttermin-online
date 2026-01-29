@@ -427,15 +427,15 @@ async function createSearchAlert() {
             const data = await response.json();
             console.log('Alert created:', data);
             alert('Benachrichtigung erfolgreich eingerichtet!\n\nSie werden informiert, sobald ein Termin verfügbar wird.\n\nSie können Ihre Benachrichtigungen im Dashboard verwalten.');
-            // Перенаправляем в дашборд
-            window.location.href = '/patient/dashboard';
+            // Очищаем результаты и позволяем продолжить поиск
+            clearFilters();
         } else {
             const error = await response.json();
             console.error('Error response:', error);
             console.error('Full error details:', JSON.stringify(error, null, 2));
             if (error.error === 'Alert already exists for this doctor/speciality') {
                 alert('Sie haben bereits eine Benachrichtigung für diese Suche eingerichtet.\n\nSie können sie in Ihrem Dashboard verwalten.');
-                window.location.href = '/patient/dashboard';
+                clearFilters();
             } else {
                 alert('Fehler: ' + (error.error || 'Konnte Benachrichtigung nicht erstellen'));
             }
@@ -488,7 +488,7 @@ async function createAlert(doctorId, doctorName, speciality) {
 function clearFilters() {
     document.getElementById('search-speciality').value = '';
     document.getElementById('search-city').value = '';
-    searchDoctors();
+    document.getElementById('search-results').innerHTML = '<div class="text-center py-5 text-muted"><p>Wählen Sie Ihre Suchkriterien und klicken Sie auf "Suchen"</p></div>';
 }
 </script>
 {% endblock dashboard_scripts %}
