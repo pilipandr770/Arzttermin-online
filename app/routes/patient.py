@@ -592,6 +592,41 @@ def api_create_alert():
     }), 201
 
 
+@patient_api.route('/alerts/check', methods=['POST'])
+@jwt_required()
+def api_check_alert():
+    """API: Проверить существует ли алерт для данного врача/специальности"""
+    identity = get_current_user()
+    if identity.get('type') != 'patient':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    patient = Patient.query.get(uuid.UUID(identity['id']))
+    if not patient:
+        return jsonify({'error': 'Patient not found'}), 404
+    
+    data = request.get_json()
+    doctor_id = data.get('doctor_id')
+    speciality = data.get('speciality')
+    
+    if doctor_id:
+        existing_alert = PatientAlert.query.filter_by(
+            patient_id=patient.id,
+            doctor_id=uuid.UUID(doctor_id),
+            is_active=True
+        ).first()
+    else:
+        existing_alert = PatientAlert.query.filter_by(
+            patient_id=patient.id,
+            speciality=speciality,
+            is_active=True
+        ).first()
+    
+    return jsonify({
+        'exists': existing_alert is not None,
+        'alert_id': str(existing_alert.id) if existing_alert else None
+    })
+
+
 @patient_api.route('/alerts/<alert_id>', methods=['DELETE'])
 @jwt_required()
 def api_delete_alert(alert_id):
