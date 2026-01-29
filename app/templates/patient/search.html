@@ -82,10 +82,12 @@
 </style>
 
 <script>
+console.log('=== SEARCH PAGE SCRIPT LOADED ===');
 // Specialities data from server
 const SPECIALITIES_DATA = {{ specialities|tojson|safe }};
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== DOMContentLoaded EVENT FIRED ===');
     // Автоматический поиск при загрузке страницы
     searchDoctors();
 });
@@ -109,6 +111,9 @@ async function searchDoctors() {
         
         if (response.ok) {
             const data = await response.json();
+            console.log('Search results:', data);
+            console.log('Doctors array:', data.doctors);
+            console.log('Doctors length:', data.doctors.length);
             displayDoctors(data.doctors);
         } else {
             resultsDiv.innerHTML = '<div class="alert alert-danger">Fehler bei der Suche</div>';
@@ -121,6 +126,10 @@ async function searchDoctors() {
 
 function displayDoctors(doctors) {
     const resultsDiv = document.getElementById('search-results');
+    
+    console.log('displayDoctors called with:', doctors);
+    console.log('Is array?', Array.isArray(doctors));
+    console.log('Length:', doctors ? doctors.length : 'null/undefined');
     
     if (doctors.length === 0) {
         // Получаем текущие критерии поиска
