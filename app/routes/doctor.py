@@ -1,8 +1,8 @@
-﻿"""
+"""
 Маршруты врачей
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity; from app.utils.jwt_helpers import get_current_user
 from app.models.doctor import Doctor
 from app.models.calendar import Calendar
 from app.models.booking import Booking
@@ -33,7 +33,7 @@ def calendar_test():
 @jwt_required()
 def api_dashboard():
     """API для получения данных дашборда врача"""
-    identity = get_jwt_identity()
+    identity = get_current_user()
     if identity.get('type') != 'doctor':
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -147,7 +147,7 @@ def bookings():
 @jwt_required()
 def api_profile():
     """API: Получение и обновление профиля врача"""
-    identity = get_jwt_identity()
+    identity = get_current_user()
     print(f"Doctor profile API called with identity: {identity}")  # Debug log
     
     if identity.get('type') != 'doctor':
@@ -216,7 +216,7 @@ def schedule_settings():
 @jwt_required()
 def api_create_calendar():
     """API: Создать календарь для врача"""
-    identity = get_jwt_identity()
+    identity = get_current_user()
     if identity.get('type') != 'doctor':
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -253,7 +253,7 @@ def api_create_calendar():
 @jwt_required()
 def api_get_bookings():
     """API: Получить все бронирования врача"""
-    identity = get_jwt_identity()
+    identity = get_current_user()
     if identity.get('type') != 'doctor':
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -308,7 +308,7 @@ def api_get_bookings():
 @jwt_required()
 def api_manage_slots():
     """API: Управление временными слотами"""
-    identity = get_jwt_identity()
+    identity = get_current_user()
     if identity.get('type') != 'doctor':
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -458,7 +458,7 @@ def api_manage_slots():
 @jwt_required()
 def api_update_schedule_settings():
     """API: Обновить настройки расписания врача"""
-    identity = get_jwt_identity()
+    identity = get_current_user()
     print(f"Update schedule settings - identity: {identity}")  # Debug
     
     if identity.get('type') != 'doctor':
@@ -514,7 +514,7 @@ def api_update_schedule_settings():
 @jwt_required()
 def api_generate_slots():
     """API: Генерировать термины на основе настроек расписания"""
-    identity = get_jwt_identity()
+    identity = get_current_user()
     if identity.get('type') != 'doctor':
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -605,7 +605,7 @@ def api_close_day():
     - date: дата в формате YYYY-MM-DD
     - reason: причина (опционально)
     """
-    identity = get_jwt_identity()
+    identity = get_current_user()
     if identity.get('type') != 'doctor':
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -665,7 +665,7 @@ def api_analytics():
     Query params:
     - period: week, month, year (default: week)
     """
-    identity = get_jwt_identity()
+    identity = get_current_user()
     if identity.get('type') != 'doctor':
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -758,7 +758,7 @@ def api_analytics():
     Request body:
     - date: дата в формате YYYY-MM-DD
     """
-    identity = get_jwt_identity()
+    identity = get_current_user()
     if identity.get('type') != 'doctor':
         return jsonify({'error': 'Unauthorized'}), 403
     

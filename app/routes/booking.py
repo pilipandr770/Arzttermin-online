@@ -1,8 +1,8 @@
-﻿"""
+"""
 Маршруты бронирований
 """
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity; from app.utils.jwt_helpers import get_current_user
 from app.models import Booking, TimeSlot, Patient, Doctor
 from app.constants import SPECIALITIES
 from app import db
@@ -21,7 +21,7 @@ def cancel_booking(booking_id):
     Request body:
     - reason: причина отмены (опционально)
     """
-    identity = get_jwt_identity()
+    identity = get_current_user()
     
     try:
         booking = Booking.query.get(uuid.UUID(booking_id))
@@ -86,7 +86,7 @@ def get_booking(booking_id):
     """
     API: Получить информацию о бронировании
     """
-    identity = get_jwt_identity()
+    identity = get_current_user()
     
     try:
         booking = Booking.query.get(uuid.UUID(booking_id))

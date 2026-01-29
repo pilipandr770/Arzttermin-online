@@ -2,7 +2,7 @@
 Маршруты практик
 """
 from flask import Blueprint, render_template, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt; from app.utils.jwt_helpers import get_current_user
 from app.models import Practice, Doctor
 from app import db
 import json
@@ -66,7 +66,7 @@ def api_get_practice_profile():
 @jwt_required()
 def api_update_practice_profile():
     """API: Обновить информацию о практике"""
-    identity = get_jwt_identity()
+    identity = get_current_user()
     data = request.get_json()
     
     # Проверяем, что это врач
