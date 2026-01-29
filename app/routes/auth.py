@@ -88,8 +88,8 @@ def api_patient_register():
     db.session.commit()
     
     # Создаем токены
-    access_token = create_access_token(identity={'id': str(patient.id), 'type': 'patient'})
-    refresh_token = create_refresh_token(identity={'id': str(patient.id), 'type': 'patient'})
+    access_token = create_access_token(identity=str(patient.id), additional_claims={'type': 'patient'})
+    refresh_token = create_refresh_token(identity=str(patient.id), additional_claims={'type': 'patient'})
     
     return jsonify({
         'message': 'Patient erfolgreich registriert',
