@@ -225,11 +225,14 @@ async function loadPracticeProfile() {
                 }
             });
         } else {
-            showAlert('danger', 'Fehler beim Laden des Profils');
+            const errorData = await response.json().catch(() => ({}));
+            const errorMsg = errorData.error || 'Fehler beim Laden des Profils';
+            showAlert('danger', `${errorMsg} (Status: ${response.status})`);
+            console.error('Profile load error:', response.status, errorData);
         }
     } catch (error) {
         console.error('Error:', error);
-        showAlert('danger', 'Fehler beim Laden des Profils');
+        showAlert('danger', `Fehler beim Laden des Profils: ${error.message}`);
     }
 }
 
