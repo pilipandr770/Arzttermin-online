@@ -2,7 +2,7 @@
 Маршруты аутентификации
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 from app.models import Patient, Doctor, Practice
 from app import db
 from app.constants import SPECIALITIES
@@ -59,8 +59,8 @@ def api_patient_login():
         db.session.commit()
     
     # Создаем токен
-    access_token = create_access_token(identity={'id': str(patient.id), 'type': 'patient'})
-    refresh_token = create_refresh_token(identity={'id': str(patient.id), 'type': 'patient'})
+    access_token = create_access_token(identity=str(patient.id), additional_claims={'type': 'patient'})
+    refresh_token = create_refresh_token(identity=str(patient.id), additional_claims={'type': 'patient'})
     
     return jsonify({
         'access_token': access_token,
@@ -113,8 +113,8 @@ def api_doctor_login():
     if not doctor or not doctor.check_password(password):
         return jsonify({'error': 'Ungültige Anmeldedaten'}), 401
     
-    access_token = create_access_token(identity={'id': str(doctor.id), 'type': 'doctor'})
-    refresh_token = create_refresh_token(identity={'id': str(doctor.id), 'type': 'doctor'})
+    access_token = create_access_token(identity=str(doctor.id), additional_claims={'type': 'doctor'})
+    refresh_token = create_refresh_token(identity=str(doctor.id), additional_claims={'type': 'doctor'})
     
     return jsonify({
         'access_token': access_token,

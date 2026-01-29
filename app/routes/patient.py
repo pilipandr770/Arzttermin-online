@@ -1,8 +1,8 @@
-п»ї"""
-РњР°СЂС€СЂСѓС‚С‹ РїР°С†РёРµРЅС‚РѕРІ
+"""
+Маршруты пациентов
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity; from app.utils.jwt_helpers import get_current_user
 from app.models import Patient, Booking, Doctor, Calendar, TimeSlot, PatientAlert
 from app.constants import SPECIALITIES
 from app import db
@@ -18,14 +18,14 @@ patient_api = Blueprint('patient_api', __name__)
 
 @bp.route('/dashboard')
 def dashboard():
-    """Р”Р°С€Р±РѕСЂРґ РїР°С†РёРµРЅС‚Р° - СЂРµРЅРґРµСЂРёРј СЃС‚СЂР°РЅРёС†Сѓ, РґР°РЅРЅС‹Рµ Р·Р°РіСЂСѓР¶Р°РµРј С‡РµСЂРµР· JS"""
-    # РџСЂРѕРІРµСЂСЏРµРј С‚РѕРєРµРЅ С‡РµСЂРµР· JavaScript РЅР° РєР»РёРµРЅС‚Рµ
+    """Дашборд пациента - рендерим страницу, данные загружаем через JS"""
+    # Проверяем токен через JavaScript на клиенте
     return render_template('patient/dashboard.html')
     
 @patient_api.route('/dashboard')
 @jwt_required()
 def api_dashboard():
-    """API РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РґР°РЅРЅС‹С… РґР°С€Р±РѕСЂРґР° РїР°С†РёРµРЅС‚Р°"""
+    """API для получения данных дашборда пациента"""
     identity = get_jwt_identity()
     if identity.get('type') != 'patient':
         return jsonify({'error': 'Unauthorized'}), 403
@@ -36,7 +36,7 @@ def api_dashboard():
     
     now = datetime.utcnow()
     
-    # РџРѕР»СѓС‡Р°РµРј СЃР»РµРґСѓСЋС‰РёР№ РїСЂРµРґСЃС‚РѕСЏС‰РёР№ С‚РµСЂРјРёРЅ
+    # Получаем следующий предстоящий термин
     next_booking = Booking.query.join(TimeSlot).filter(
         Booking.patient_id == patient.id,
         Booking.status == 'confirmed',
@@ -48,7 +48,7 @@ def api_dashboard():
         doctor = next_booking.timeslot.calendar.doctor
         practice = doctor.practice
         
-        # РР·РІР»РµРєР°РµРј city РёР· JSON address
+        # Извлекаем city из JSON address
         practice_city = None
         if practice:
             address_dict = practice.address_dict
@@ -76,7 +76,7 @@ def api_dashboard():
             'cancellable_until': next_booking.cancellable_until.isoformat() if next_booking.cancellable_until else None
         }
     
-    # РџРѕР»СѓС‡Р°РµРј РёСЃС‚РѕСЂРёСЋ (РїРѕСЃР»РµРґРЅРёРµ 5 Р·Р°РІРµСЂС€РµРЅРЅС‹С… РёР»Рё РѕС‚РјРµРЅРµРЅРЅС‹С… С‚РµСЂРјРёРЅРѕРІ)
+    # Получаем историю (последние 5 завершенных или отмененных терминов)
     history_bookings = Booking.query.join(TimeSlot).filter(
         Booking.patient_id == patient.id,
         Booking.status.in_(['completed', 'cancelled'])
@@ -94,10 +94,10 @@ def api_dashboard():
             'status': booking.status
         })
     
-    # Р РµРєРѕРјРµРЅРґРѕРІР°РЅРЅС‹Рµ РІСЂР°С‡Рё (РµСЃР»Рё РµСЃС‚СЊ РїРѕСЃР»РµРґРЅРёР№ С‚РµСЂРјРёРЅ)
+    # Рекомендованные врачи (если есть последний термин)
     recommended_doctors = []
     if next_booking or history_bookings:
-        # Р‘РµСЂРµРј СЃРїРµС†РёР°Р»СЊРЅРѕСЃС‚СЊ РёР· РїРѕСЃР»РµРґРЅРµРіРѕ С‚РµСЂРјРёРЅР°
+        # Берем специальность из последнего термина
         last_speciality = None
         if next_booking:
             last_speciality = next_booking.timeslot.calendar.doctor.speciality
@@ -105,10 +105,10 @@ def api_dashboard():
             last_speciality = history_bookings[0].timeslot.calendar.doctor.speciality
         
         if last_speciality:
-            # РќР°С…РѕРґРёРј РґСЂСѓРіРёС… РІСЂР°С‡РµР№ С‚РѕР№ Р¶Рµ СЃРїРµС†РёР°Р»СЊРЅРѕСЃС‚Рё СЃ РґРѕСЃС‚СѓРїРЅС‹РјРё СЃР»РѕС‚Р°РјРё
+            # Находим других врачей той же специальности с доступными слотами
             from sqlalchemy import func
             
-            # РџРѕРґР·Р°РїСЂРѕСЃ РґР»СЏ РїРѕРґСЃС‡РµС‚Р° СЃРІРѕР±РѕРґРЅС‹С… СЃР»РѕС‚РѕРІ
+            # Подзапрос для подсчета свободных слотов
             from app.models import Calendar
             
             recommended = db.session.query(Doctor).join(Calendar).join(TimeSlot).filter(
@@ -119,14 +119,14 @@ def api_dashboard():
             ).group_by(Doctor.id).limit(3).all()
             
             for doc in recommended:
-                # РџРѕРґСЃС‡РёС‚С‹РІР°РµРј СЃРІРѕР±РѕРґРЅС‹Рµ СЃР»РѕС‚С‹ РґР»СЏ РєР°Р¶РґРѕРіРѕ РІСЂР°С‡Р°
+                # Подсчитываем свободные слоты для каждого врача
                 free_count = TimeSlot.query.filter(
                     TimeSlot.calendar_id == doc.calendar.id,
                     TimeSlot.status == 'available',
                     TimeSlot.start_time > now
                 ).count()
                 
-                # РР·РІР»РµРєР°РµРј city РёР· JSON address
+                # Извлекаем city из JSON address
                 practice_city = None
                 if doc.practice:
                     address_dict = doc.practice.address_dict
@@ -144,13 +144,13 @@ def api_dashboard():
                     } if doc.practice else None
                 })
     
-    # РџРѕР»СѓС‡Р°РµРј Р°РєС‚РёРІРЅС‹Рµ Р°Р»РµСЂС‚С‹ РїР°С†РёРµРЅС‚Р°
+    # Получаем активные алерты пациента
     active_alerts = PatientAlert.query.filter_by(
         patient_id=patient.id,
         is_active=True
     ).order_by(PatientAlert.created_at.desc()).all()
     
-    # РџРѕР»СѓС‡Р°РµРј РїРѕСЃР»РµРґРЅРёРµ СѓРІРµРґРѕРјР»РµРЅРёСЏ (РЅРµР°РєС‚РёРІРЅС‹Рµ Р°Р»РµСЂС‚С‹, РєРѕС‚РѕСЂС‹Рµ СЃСЂР°Р±РѕС‚Р°Р»Рё)
+    # Получаем последние уведомления (неактивные алерты, которые сработали)
     recent_notifications = PatientAlert.query.filter_by(
         patient_id=patient.id,
         is_active=False
@@ -177,7 +177,7 @@ def api_dashboard():
 @patient_api.route('/profile')
 @jwt_required()
 def api_profile():
-    """API РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РґР°РЅРЅС‹С… РїСЂРѕС„РёР»СЏ РїР°С†РёРµРЅС‚Р°"""
+    """API для получения данных профиля пациента"""
     identity = get_jwt_identity()
     if identity.get('type') != 'patient':
         return jsonify({'error': 'Unauthorized'}), 403
@@ -200,7 +200,7 @@ def api_profile():
 @patient_api.route('/bookings')
 @jwt_required()
 def api_bookings():
-    """API РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РёСЃС‚РѕСЂРёРё Р±СЂРѕРЅРёСЂРѕРІР°РЅРёР№ РїР°С†РёРµРЅС‚Р°"""
+    """API для получения истории бронирований пациента"""
     identity = get_jwt_identity()
     if identity.get('type') != 'patient':
         return jsonify({'error': 'Unauthorized'}), 403
@@ -209,7 +209,7 @@ def api_bookings():
     if not patient:
         return jsonify({'error': 'Patient not found'}), 404
     
-    # РџРѕР»СѓС‡Р°РµРј РІСЃРµ Р±СЂРѕРЅРёСЂРѕРІР°РЅРёСЏ РїР°С†РёРµРЅС‚Р°
+    # Получаем все бронирования пациента
     all_bookings = Booking.query.filter_by(
         patient_id=patient.id
     ).order_by(Booking.created_at.desc()).all()
@@ -230,41 +230,41 @@ def api_bookings():
 
 @bp.route('/profile')
 def profile():
-    """РџСЂРѕС„РёР»СЊ РїР°С†РёРµРЅС‚Р°"""
-    # РџСЂРѕРІРµСЂСЏРµРј С‚РѕРєРµРЅ С‡РµСЂРµР· JavaScript РЅР° РєР»РёРµРЅС‚Рµ
+    """Профиль пациента"""
+    # Проверяем токен через JavaScript на клиенте
     return render_template('patient/profile.html')
 
 
 @bp.route('/bookings')
 def bookings():
-    """РСЃС‚РѕСЂРёСЏ Р±СЂРѕРЅРёСЂРѕРІР°РЅРёР№ РїР°С†РёРµРЅС‚Р°"""
-    # РџСЂРѕРІРµСЂСЏРµРј С‚РѕРєРµРЅ С‡РµСЂРµР· JavaScript РЅР° РєР»РёРµРЅС‚Рµ
+    """История бронирований пациента"""
+    # Проверяем токен через JavaScript на клиенте
     return render_template('patient/bookings.html')
 
 
 @bp.route('/search')
 def search():
-    """РЎС‚СЂР°РЅРёС†Р° РїРѕРёСЃРєР° РІСЂР°С‡РµР№"""
+    """Страница поиска врачей"""
     from app.constants import SPECIALITIES
     return render_template('patient/search.html', specialities=SPECIALITIES)
 
 
 @bp.route('/calendar')
 def calendar():
-    """РљР°Р»РµРЅРґР°СЂСЊ РґРѕСЃС‚СѓРїРЅС‹С… С‚РµСЂРјРёРЅРѕРІ"""
+    """Календарь доступных терминов"""
     from app.constants import SPECIALITIES
     return render_template('patient/calendar.html', specialities=SPECIALITIES)
 
 
 @patient_api.route('/available-slots-overview', methods=['GET'])
 def api_get_available_slots_overview():
-    """API: РћР±Р·РѕСЂ РґРѕСЃС‚СѓРїРЅС‹С… СЃР»РѕС‚РѕРІ РїРѕ СЃРїРµС†РёР°Р»СЊРЅРѕСЃС‚СЏРј (РїСѓР±Р»РёС‡РЅС‹Р№)"""
+    """API: Обзор доступных слотов по специальностям (публичный)"""
     from app.constants import SPECIALITIES
     
-    # РџРѕР»СѓС‡Р°РµРј РІСЃРµ РґРѕСЃС‚СѓРїРЅС‹Рµ СЃР»РѕС‚С‹
+    # Получаем все доступные слоты
     available_slots = TimeSlot.query.filter_by(status='available').all()
     
-    # Р“СЂСѓРїРїРёСЂСѓРµРј РїРѕ СЃРїРµС†РёР°Р»СЊРЅРѕСЃС‚СЏРј
+    # Группируем по специальностям
     speciality_overview = {}
     
     for slot in available_slots:
@@ -287,20 +287,20 @@ def api_get_available_slots_overview():
 @patient_api.route('/search/doctors', methods=['GET'])
 @jwt_required()
 def api_search_doctors():
-    """API: РџРѕРёСЃРє РІСЂР°С‡РµР№ СЃ С„РёР»СЊС‚СЂР°РјРё"""
+    """API: Поиск врачей с фильтрами"""
     identity = get_jwt_identity()
     if identity.get('type') != 'patient':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    # РџР°СЂР°РјРµС‚СЂС‹ РїРѕРёСЃРєР°
+    # Параметры поиска
     speciality = request.args.get('speciality')
     city = request.args.get('city')
     name = request.args.get('name')
     
-    # Р‘Р°Р·РѕРІС‹Р№ Р·Р°РїСЂРѕСЃ
+    # Базовый запрос
     query = Doctor.query.filter(Doctor.is_verified == True)
     
-    # Р¤РёР»СЊС‚СЂС‹
+    # Фильтры
     if speciality:
         query = query.filter(Doctor.speciality == speciality)
     if name:
@@ -313,10 +313,10 @@ def api_search_doctors():
     
     doctors = query.all()
     
-    # Р¤РѕСЂРјРёСЂСѓРµРј РѕС‚РІРµС‚
+    # Формируем ответ
     doctors_data = []
     for doctor in doctors:
-        # РџРѕР»СѓС‡Р°РµРј Р±Р»РёР¶Р°Р№С€РёРµ РґРѕСЃС‚СѓРїРЅС‹Рµ СЃР»РѕС‚С‹
+        # Получаем ближайшие доступные слоты
         available_slots = []
         if doctor.calendar:
             now = datetime.utcnow()
@@ -349,7 +349,7 @@ def api_search_doctors():
 @patient_api.route('/slots/<doctor_id>', methods=['GET'])
 @jwt_required()
 def api_get_doctor_slots(doctor_id):
-    """API: РџРѕР»СѓС‡РёС‚СЊ РґРѕСЃС‚СѓРїРЅС‹Рµ СЃР»РѕС‚С‹ РІСЂР°С‡Р°"""
+    """API: Получить доступные слоты врача"""
     identity = get_jwt_identity()
     if identity.get('type') != 'patient':
         return jsonify({'error': 'Unauthorized'}), 403
@@ -358,7 +358,7 @@ def api_get_doctor_slots(doctor_id):
     if not doctor or not doctor.calendar:
         return jsonify({'error': 'Doctor or calendar not found'}), 404
     
-    # РџР°СЂР°РјРµС‚СЂС‹
+    # Параметры
     date_from = request.args.get('from', datetime.utcnow().strftime('%Y-%m-%d'))
     days = int(request.args.get('days', 7))
     
@@ -369,7 +369,7 @@ def api_get_doctor_slots(doctor_id):
     
     end_date = start_date + timedelta(days=days)
     
-    # РџРѕР»СѓС‡Р°РµРј СЃР»РѕС‚С‹
+    # Получаем слоты
     slots = TimeSlot.query.filter(
         TimeSlot.calendar_id == doctor.calendar.id,
         TimeSlot.status == 'available',
@@ -402,7 +402,7 @@ def api_get_doctor_slots(doctor_id):
 @patient_api.route('/book', methods=['POST'])
 @jwt_required()
 def api_book_slot():
-    """API: Р—Р°Р±СЂРѕРЅРёСЂРѕРІР°С‚СЊ СЃР»РѕС‚"""
+    """API: Забронировать слот"""
     identity = get_jwt_identity()
     if identity.get('type') != 'patient':
         return jsonify({'error': 'Unauthorized'}), 403
@@ -421,26 +421,26 @@ def api_book_slot():
     if not slot or slot.status != 'available':
         return jsonify({'error': 'Slot not available'}), 400
     
-    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ Р·Р°Р±СЂРѕРЅРёСЂРѕРІР°РЅ Р»Рё СѓР¶Рµ СЌС‚РѕС‚ СЃР»РѕС‚
+    # Проверяем, не забронирован ли уже этот слот
     existing_booking = Booking.query.filter_by(timeslot_id=slot.id).first()
     if existing_booking:
         return jsonify({'error': 'Slot already booked'}), 400
     
-    # РЎРѕР·РґР°РµРј Р±СЂРѕРЅРёСЂРѕРІР°РЅРёРµ
+    # Создаем бронирование
     booking = Booking(
         timeslot_id=slot.id,
         patient_id=patient.id,
         status='confirmed',
-        payment_intent_id=f'pi_test_{uuid.uuid4().hex[:16]}',  # Р¤РёРєС‚РёРІРЅС‹Р№ payment intent РґР»СЏ MVP
-        amount_paid=50.00,  # Р¤РёРєС‚РёРІРЅР°СЏ С†РµРЅР° РґР»СЏ MVP
+        payment_intent_id=f'pi_test_{uuid.uuid4().hex[:16]}',  # Фиктивный payment intent для MVP
+        amount_paid=50.00,  # Фиктивная цена для MVP
         booking_code=''.join(random.choices(string.ascii_uppercase + string.digits, k=8)),
-        cancellable_until=slot.start_time - timedelta(hours=24)  # РњРѕР¶РЅРѕ РѕС‚РјРµРЅРёС‚СЊ Р·Р° 24 С‡Р°СЃР°
+        cancellable_until=slot.start_time - timedelta(hours=24)  # Можно отменить за 24 часа
     )
     
-    # РћР±РЅРѕРІР»СЏРµРј СЃС‚Р°С‚СѓСЃ СЃР»РѕС‚Р°
+    # Обновляем статус слота
     slot.status = 'booked'
     
-    # РћР±РЅРѕРІР»СЏРµРј СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїР°С†РёРµРЅС‚Р°
+    # Обновляем статистику пациента
     patient.total_bookings += 1
     
     db.session.add(booking)
@@ -459,7 +459,7 @@ def api_book_slot():
 @patient_api.route('/bookings/<booking_id>/cancel', methods=['POST'])
 @jwt_required()
 def api_cancel_booking(booking_id):
-    """API: РћС‚РјРµРЅРёС‚СЊ Р±СЂРѕРЅРёСЂРѕРІР°РЅРёРµ"""
+    """API: Отменить бронирование"""
     identity = get_jwt_identity()
     if identity.get('type') != 'patient':
         return jsonify({'error': 'Unauthorized'}), 403
@@ -468,7 +468,7 @@ def api_cancel_booking(booking_id):
     if not patient:
         return jsonify({'error': 'Patient not found'}), 404
     
-    # РќР°С…РѕРґРёРј Р±СЂРѕРЅРёСЂРѕРІР°РЅРёРµ
+    # Находим бронирование
     booking = Booking.query.filter_by(
         id=uuid.UUID(booking_id),
         patient_id=patient.id
@@ -477,18 +477,18 @@ def api_cancel_booking(booking_id):
     if not booking:
         return jsonify({'error': 'Booking not found'}), 404
     
-    # РџСЂРѕРІРµСЂСЏРµРј РІРѕР·РјРѕР¶РЅРѕСЃС‚СЊ РѕС‚РјРµРЅС‹
+    # Проверяем возможность отмены
     if not booking.can_be_cancelled():
         return jsonify({
             'error': 'Booking cannot be cancelled',
             'reason': 'Cancellation deadline has passed'
         }), 400
     
-    # РџРѕР»СѓС‡Р°РµРј РґР°РЅРЅС‹Рµ РёР· Р·Р°РїСЂРѕСЃР°
+    # Получаем данные из запроса
     data = request.get_json() or {}
     reason = data.get('reason', '')
     
-    # РћС‚РјРµРЅСЏРµРј Р±СЂРѕРЅРёСЂРѕРІР°РЅРёРµ
+    # Отменяем бронирование
     if booking.cancel(cancelled_by='patient', reason=reason):
         return jsonify({
             'message': 'Booking cancelled successfully',
@@ -504,7 +504,7 @@ def api_cancel_booking(booking_id):
 @patient_api.route('/alerts', methods=['GET'])
 @jwt_required()
 def api_get_alerts():
-    """API: РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ Р°Р»РµСЂС‚С‹ РїР°С†РёРµРЅС‚Р°"""
+    """API: Получить все алерты пациента"""
     identity = get_jwt_identity()
     if identity.get('type') != 'patient':
         return jsonify({'error': 'Unauthorized'}), 403
@@ -513,13 +513,13 @@ def api_get_alerts():
     if not patient:
         return jsonify({'error': 'Patient not found'}), 404
     
-    # РџРѕР»СѓС‡Р°РµРј Р°РєС‚РёРІРЅС‹Рµ Р°Р»РµСЂС‚С‹
+    # Получаем активные алерты
     active_alerts = PatientAlert.query.filter_by(
         patient_id=patient.id,
         is_active=True
     ).order_by(PatientAlert.created_at.desc()).all()
     
-    # РџРѕР»СѓС‡Р°РµРј РЅРµР°РєС‚РёРІРЅС‹Рµ (СѓР¶Рµ СЃСЂР°Р±РѕС‚Р°РІС€РёРµ)
+    # Получаем неактивные (уже сработавшие)
     inactive_alerts = PatientAlert.query.filter_by(
         patient_id=patient.id,
         is_active=False
@@ -534,7 +534,7 @@ def api_get_alerts():
 @patient_api.route('/alerts', methods=['POST'])
 @jwt_required()
 def api_create_alert():
-    """API: РЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№ Р°Р»РµСЂС‚"""
+    """API: Создать новый алерт"""
     identity = get_jwt_identity()
     if identity.get('type') != 'patient':
         return jsonify({'error': 'Unauthorized'}), 403
@@ -545,23 +545,23 @@ def api_create_alert():
     
     data = request.get_json()
     
-    # РџСЂРѕРІРµСЂРєР°: С…РѕС‚СЏ Р±С‹ doctor_id РёР»Рё speciality РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ СѓРєР°Р·Р°РЅ
+    # Проверка: хотя бы doctor_id или speciality должен быть указан
     doctor_id = data.get('doctor_id')
     speciality = data.get('speciality')
     
     if not doctor_id and not speciality:
         return jsonify({'error': 'Either doctor_id or speciality must be provided'}), 400
     
-    # РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ С‚Р°РєРѕР№ Р°Р»РµСЂС‚ РµС‰Рµ РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
+    # Проверяем что такой алерт еще не существует
     if doctor_id:
-        # Р•СЃР»Рё СѓРєР°Р·Р°РЅ РєРѕРЅРєСЂРµС‚РЅС‹Р№ РІСЂР°С‡, РїСЂРѕРІРµСЂСЏРµРј РїРѕ doctor_id
+        # Если указан конкретный врач, проверяем по doctor_id
         existing_alert = PatientAlert.query.filter_by(
             patient_id=patient.id,
             doctor_id=uuid.UUID(doctor_id),
             is_active=True
         ).first()
     else:
-        # Р•СЃР»Рё С‚РѕР»СЊРєРѕ СЃРїРµС†РёР°Р»СЊРЅРѕСЃС‚СЊ, РїСЂРѕРІРµСЂСЏРµРј РїРѕ speciality
+        # Если только специальность, проверяем по speciality
         existing_alert = PatientAlert.query.filter_by(
             patient_id=patient.id,
             speciality=speciality,
@@ -571,7 +571,7 @@ def api_create_alert():
     if existing_alert:
         return jsonify({'error': 'Alert already exists for this doctor/speciality'}), 400
     
-    # РЎРѕР·РґР°РµРј Р°Р»РµСЂС‚
+    # Создаем алерт
     alert = PatientAlert(
         patient_id=patient.id,
         doctor_id=uuid.UUID(doctor_id) if doctor_id else None,
@@ -594,7 +594,7 @@ def api_create_alert():
 @patient_api.route('/alerts/<alert_id>', methods=['DELETE'])
 @jwt_required()
 def api_delete_alert(alert_id):
-    """API: РЈРґР°Р»РёС‚СЊ Р°Р»РµСЂС‚"""
+    """API: Удалить алерт"""
     identity = get_jwt_identity()
     if identity.get('type') != 'patient':
         return jsonify({'error': 'Unauthorized'}), 403
@@ -616,7 +616,7 @@ def api_delete_alert(alert_id):
 @patient_api.route('/alerts/<alert_id>/deactivate', methods=['POST'])
 @jwt_required()
 def api_deactivate_alert(alert_id):
-    """API: Р”РµР°РєС‚РёРІРёСЂРѕРІР°С‚СЊ Р°Р»РµСЂС‚ (РїРѕСЃР»Рµ С‚РѕРіРѕ РєР°Рє РїР°С†РёРµРЅС‚ Р·Р°Р±СЂРѕРЅРёСЂРѕРІР°Р» СЃР»РѕС‚)"""
+    """API: Деактивировать алерт (после того как пациент забронировал слот)"""
     identity = get_jwt_identity()
     if identity.get('type') != 'patient':
         return jsonify({'error': 'Unauthorized'}), 403

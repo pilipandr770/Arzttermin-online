@@ -2,7 +2,7 @@
 Маршруты практик
 """
 from flask import Blueprint, render_template, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from app.models import Practice, Doctor
 from app import db
 import json
@@ -23,15 +23,16 @@ def practice_profile():
 @jwt_required()
 def api_get_practice_profile():
     """API: Получить информацию о практике врача"""
-    identity = get_jwt_identity()
+    doctor_id = get_jwt_identity()  # Now it's just the ID string
+    claims = get_jwt()
     
     # Проверяем, что это врач
-    if identity.get('type') != 'doctor':
+    if claims.get('type') != 'doctor':
         return jsonify({'error': 'Unauthorized'}), 403
     
     # Получаем доктора
     import uuid
-    doctor = Doctor.query.get(uuid.UUID(identity['id']))
+    doctor = Doctor.query.get(uuid.UUID(doctor_id))
     if not doctor or not doctor.practice_id:
         return jsonify({'error': 'Practice not found'}), 404
     
