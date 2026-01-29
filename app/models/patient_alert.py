@@ -53,7 +53,7 @@ class PatientAlert(db.Model):
     
     def to_dict(self):
         """Сериализация для API"""
-        from app.constants import SPECIALITIES
+        from app.constants.specialities import SPECIALITIES
         
         doctor_info = None
         if self.doctor:

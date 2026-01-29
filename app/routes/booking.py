@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.utils.jwt_helpers import get_current_user
 from app.models import Booking, TimeSlot, Patient, Doctor
-from app.constants import SPECIALITIES
+from app.constants.specialities import SPECIALITIES
 from app import db
 from datetime import datetime, timedelta
 import uuid

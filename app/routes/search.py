@@ -1,9 +1,9 @@
-п»ї"""
-РњР°СЂС€СЂСѓС‚С‹ РїРѕРёСЃРєР°
+"""
+Маршруты поиска
 """
 from flask import Blueprint, jsonify, request
 from app.models import Doctor, Calendar, TimeSlot, Practice
-from app.constants import SPECIALITIES
+from app.constants.specialities import SPECIALITIES
 from app.constants.cities import MAJOR_GERMAN_CITIES, GERMAN_STATES
 from app import db
 from datetime import datetime, timedelta
@@ -17,23 +17,23 @@ search_api = Blueprint('search_api', __name__)
 @search_api.route('/doctors/available', methods=['GET'])
 def get_available_doctors():
     """
-    API: РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє РІСЂР°С‡РµР№ СЃ РєРѕР»РёС‡РµСЃС‚РІРѕРј СЃРІРѕР±РѕРґРЅС‹С… СЃР»РѕС‚РѕРІ
+    API: Получить список врачей с количеством свободных слотов
     
     Query params:
-    - speciality: С„РёР»СЊС‚СЂ РїРѕ СЃРїРµС†РёР°Р»СЊРЅРѕСЃС‚Рё
-    - city: С„РёР»СЊС‚СЂ РїРѕ РіРѕСЂРѕРґСѓ
-    - date_from: РЅР°С‡Р°Р»Рѕ РїРµСЂРёРѕРґР° (YYYY-MM-DD)
-    - date_to: РєРѕРЅРµС† РїРµСЂРёРѕРґР° (YYYY-MM-DD)
-    - limit: РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ (default 20)
+    - speciality: фильтр по специальности
+    - city: фильтр по городу
+    - date_from: начало периода (YYYY-MM-DD)
+    - date_to: конец периода (YYYY-MM-DD)
+    - limit: количество результатов (default 20)
     """
-    # РџР°СЂР°РјРµС‚СЂС‹ С„РёР»СЊС‚СЂР°С†РёРё
+    # Параметры фильтрации
     speciality = request.args.get('speciality')
     city = request.args.get('city')
     date_from_str = request.args.get('date_from')
     date_to_str = request.args.get('date_to')
     limit = int(request.args.get('limit', 20))
     
-    # Р”Р°С‚С‹ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ: СЃР»РµРґСѓСЋС‰РёРµ 7 РґРЅРµР№
+    # Даты по умолчанию: следующие 7 дней
     if date_from_str:
         date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
     else:
@@ -44,7 +44,7 @@ def get_available_doctors():
     else:
         date_to = date_from + timedelta(days=7)
     
-    # РџРѕРґР·Р°РїСЂРѕСЃ: РїРѕРґСЃС‡РµС‚ СЃРІРѕР±РѕРґРЅС‹С… СЃР»РѕС‚РѕРІ РґР»СЏ РєР°Р¶РґРѕРіРѕ РєР°Р»РµРЅРґР°СЂСЏ
+    # Подзапрос: подсчет свободных слотов для каждого календаря
     free_slots_subquery = db.session.query(
         TimeSlot.calendar_id,
         func.count(TimeSlot.id).label('free_slots_count')
@@ -54,7 +54,7 @@ def get_available_doctors():
         TimeSlot.start_time <= date_to
     ).group_by(TimeSlot.calendar_id).subquery()
     
-    # РћСЃРЅРѕРІРЅРѕР№ Р·Р°РїСЂРѕСЃ: РІСЂР°С‡Рё СЃ РєРѕР»РёС‡РµСЃС‚РІРѕРј СЃРІРѕР±РѕРґРЅС‹С… СЃР»РѕС‚РѕРІ
+    # Основной запрос: врачи с количеством свободных слотов
     query = db.session.query(
         Doctor,
         Calendar,
@@ -70,13 +70,13 @@ def get_available_doctors():
         Doctor.is_verified == True
     )
     
-    # РџСЂРёРјРµРЅСЏРµРј С„РёР»СЊС‚СЂС‹
+    # Применяем фильтры
     if speciality:
         query = query.filter(Doctor.speciality == speciality)
     
     if city:
-        # Р“РёР±РєРёР№ РїРѕРёСЃРє РїРѕ РіРѕСЂРѕРґСѓ: РїСЂРѕРІРµСЂСЏРµРј РІС…РѕР¶РґРµРЅРёРµ РІ JSON РїРѕР»Рµ address
-        # РџРѕРґРґРµСЂР¶РёРІР°РµРј С‡Р°СЃС‚РёС‡РЅРѕРµ СЃРѕРІРїР°РґРµРЅРёРµ (case-insensitive)
+        # Гибкий поиск по городу: проверяем вхождение в JSON поле address
+        # Поддерживаем частичное совпадение (case-insensitive)
         city_filter = or_(
             func.lower(Practice.address).like(f'%"city": "{city.lower()}"%'),
             func.lower(Practice.address).like(f'%"city":"{city.lower()}"%'),
@@ -84,13 +84,13 @@ def get_available_doctors():
         )
         query = query.filter(city_filter)
     
-    # РЎРѕСЂС‚РёСЂРѕРІРєР°: РІСЂР°С‡Рё СЃ Р±РѕР»СЊС€РёРј РєРѕР»РёС‡РµСЃС‚РІРѕРј СЃР»РѕС‚РѕРІ РІ РЅР°С‡Р°Р»Рµ
+    # Сортировка: врачи с большим количеством слотов в начале
     query = query.order_by(func.coalesce(free_slots_subquery.c.free_slots_count, 0).desc())
     
-    # РћРіСЂР°РЅРёС‡РµРЅРёРµ СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ
+    # Ограничение результатов
     results = query.limit(limit).all()
     
-    # Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РѕС‚РІРµС‚Р°
+    # Формирование ответа
     doctors_list = []
     for doctor, calendar, practice, free_slots in results:
         # Get speciality display from constants
@@ -144,11 +144,11 @@ def get_available_doctors():
 @search_api.route('/doctors/<doctor_id>/slots', methods=['GET'])
 def get_doctor_slots(doctor_id):
     """
-    API: РџРѕР»СѓС‡РёС‚СЊ СЃРІРѕР±РѕРґРЅС‹Рµ СЃР»РѕС‚С‹ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ РІСЂР°С‡Р°
+    API: Получить свободные слоты конкретного врача
     
     Query params:
-    - date_from: РЅР°С‡Р°Р»Рѕ РїРµСЂРёРѕРґР° (YYYY-MM-DD)
-    - date_to: РєРѕРЅРµС† РїРµСЂРёРѕРґР° (YYYY-MM-DD)
+    - date_from: начало периода (YYYY-MM-DD)
+    - date_to: конец периода (YYYY-MM-DD)
     """
     try:
         doctor = Doctor.query.get(doctor_id)
@@ -158,11 +158,11 @@ def get_doctor_slots(doctor_id):
         if not doctor.calendar:
             return jsonify({'error': 'Doctor has no calendar'}), 404
         
-        # РџР°СЂР°РјРµС‚СЂС‹ С„РёР»СЊС‚СЂР°С†РёРё
+        # Параметры фильтрации
         date_from_str = request.args.get('date_from')
         date_to_str = request.args.get('date_to')
         
-        # Р”Р°С‚С‹ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ: СЃР»РµРґСѓСЋС‰РёРµ 7 РґРЅРµР№
+        # Даты по умолчанию: следующие 7 дней
         if date_from_str:
             date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
         else:
@@ -173,7 +173,7 @@ def get_doctor_slots(doctor_id):
         else:
             date_to = date_from + timedelta(days=7)
         
-        # РџРѕР»СѓС‡Р°РµРј СЃРІРѕР±РѕРґРЅС‹Рµ СЃР»РѕС‚С‹
+        # Получаем свободные слоты
         slots = TimeSlot.query.filter(
             TimeSlot.calendar_id == doctor.calendar.id,
             TimeSlot.status == 'available',
@@ -181,7 +181,7 @@ def get_doctor_slots(doctor_id):
             TimeSlot.start_time <= date_to
         ).order_by(TimeSlot.start_time).all()
         
-        # Р“СЂСѓРїРїРёСЂСѓРµРј РїРѕ РґРЅСЏРј
+        # Группируем по дням
         slots_by_date = {}
         for slot in slots:
             date_key = slot.start_time.strftime('%Y-%m-%d')
@@ -222,11 +222,11 @@ def get_doctor_slots(doctor_id):
 @search_api.route('/cities', methods=['GET'])
 def search_cities():
     """
-    API: Autocomplete РґР»СЏ РіРѕСЂРѕРґРѕРІ
+    API: Autocomplete для городов
     
     Query params:
-    - q: РїРѕРёСЃРєРѕРІС‹Р№ Р·Р°РїСЂРѕСЃ (РјРёРЅРёРјСѓРј 2 СЃРёРјРІРѕР»Р°)
-    - limit: РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ (default 10)
+    - q: поисковый запрос (минимум 2 символа)
+    - limit: количество результатов (default 10)
     """
     query = request.args.get('q', '').strip()
     limit = int(request.args.get('limit', 10))
@@ -234,14 +234,14 @@ def search_cities():
     if len(query) < 2:
         return jsonify({'cities': MAJOR_GERMAN_CITIES[:limit]})
     
-    # РџРѕРёСЃРє РїРѕ РЅР°С‡Р°Р»Сѓ РЅР°Р·РІР°РЅРёСЏ (case-insensitive)
+    # Поиск по началу названия (case-insensitive)
     query_lower = query.lower()
     matched_cities = [
         city for city in MAJOR_GERMAN_CITIES 
         if city.lower().startswith(query_lower)
     ]
     
-    # Р•СЃР»Рё РЅРµС‚ СЃРѕРІРїР°РґРµРЅРёР№ РїРѕ РЅР°С‡Р°Р»Сѓ, РёС‰РµРј РїРѕ РІС…РѕР¶РґРµРЅРёСЋ
+    # Если нет совпадений по началу, ищем по вхождению
     if not matched_cities:
         matched_cities = [
             city for city in MAJOR_GERMAN_CITIES 
@@ -257,12 +257,12 @@ def search_cities():
 @search_api.route('/cities/nearby', methods=['POST'])
 def get_nearby_cities():
     """
-    API: РќР°Р№С‚Рё Р±Р»РёР¶Р°Р№С€РёРµ РіРѕСЂРѕРґР° РїРѕ РєРѕРѕСЂРґРёРЅР°С‚Р°Рј
+    API: Найти ближайшие города по координатам
     
     Request body:
-    - latitude: С€РёСЂРѕС‚Р° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
-    - longitude: РґРѕР»РіРѕС‚Р° РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
-    - radius: СЂР°РґРёСѓСЃ РїРѕРёСЃРєР° РІ РєРј (default 50)
+    - latitude: широта пользователя
+    - longitude: долгота пользователя
+    - radius: радиус поиска в км (default 50)
     """
     data = request.get_json()
     
@@ -271,10 +271,10 @@ def get_nearby_cities():
     
     user_lat = float(data['latitude'])
     user_lon = float(data['longitude'])
-    radius = float(data.get('radius', 50))  # РєРј
+    radius = float(data.get('radius', 50))  # км
     
-    # РџРѕРёСЃРє РїСЂР°РєС‚РёРє РІ СЂР°РґРёСѓСЃРµ
-    # РСЃРїРѕР»СЊР·СѓРµРј С„РѕСЂРјСѓР»Сѓ Haversine РґР»СЏ СЂР°СЃС‡РµС‚Р° СЂР°СЃСЃС‚РѕСЏРЅРёСЏ
+    # Поиск практик в радиусе
+    # Используем формулу Haversine для расчета расстояния
     practices = Practice.query.filter(
         Practice.latitude.isnot(None),
         Practice.longitude.isnot(None)
@@ -295,7 +295,7 @@ def get_nearby_cities():
                 'distance_km': round(distance, 2)
             })
     
-    # РЎРѕСЂС‚РёСЂСѓРµРј РїРѕ СЂР°СЃСЃС‚РѕСЏРЅРёСЋ
+    # Сортируем по расстоянию
     nearby_practices.sort(key=lambda x: x['distance_km'])
     
     return jsonify({
@@ -310,23 +310,23 @@ def get_nearby_cities():
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     """
-    Р Р°СЃС‡РµС‚ СЂР°СЃСЃС‚РѕСЏРЅРёСЏ РјРµР¶РґСѓ РґРІСѓРјСЏ С‚РѕС‡РєР°РјРё РїРѕ С„РѕСЂРјСѓР»Рµ Haversine
-    Р’РѕР·РІСЂР°С‰Р°РµС‚ СЂР°СЃСЃС‚РѕСЏРЅРёРµ РІ РєРёР»РѕРјРµС‚СЂР°С…
+    Расчет расстояния между двумя точками по формуле Haversine
+    Возвращает расстояние в километрах
     """
-    # Р Р°РґРёСѓСЃ Р—РµРјР»Рё РІ РєРј
+    # Радиус Земли в км
     R = 6371.0
     
-    # РџРµСЂРµРІРѕРґ РіСЂР°РґСѓСЃРѕРІ РІ СЂР°РґРёР°РЅС‹
+    # Перевод градусов в радианы
     lat1_rad = math.radians(lat1)
     lon1_rad = math.radians(lon1)
     lat2_rad = math.radians(lat2)
     lon2_rad = math.radians(lon2)
     
-    # Р Р°Р·РЅРёС†Р° РєРѕРѕСЂРґРёРЅР°С‚
+    # Разница координат
     dlat = lat2_rad - lat1_rad
     dlon = lon2_rad - lon1_rad
     
-    # Р¤РѕСЂРјСѓР»Р° Haversine
+    # Формула Haversine
     a = math.sin(dlat / 2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     

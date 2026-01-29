@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 from app.models import Patient, Doctor, Practice
 from app import db
-from app.constants import SPECIALITIES
+from app.constants.specialities import SPECIALITIES
 import re
 import uuid
 from datetime import datetime

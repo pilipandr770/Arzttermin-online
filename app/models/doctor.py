@@ -123,7 +123,7 @@ class Doctor(db.Model):
     
     def to_dict(self, include_practice=False):
         """Сериализация для API"""
-        from app.constants import SPECIALITIES
+        from app.constants.specialities import SPECIALITIES
         
         speciality_info = SPECIALITIES.get(self.speciality, {})
         
@@ -157,7 +157,7 @@ class Doctor(db.Model):
     @property
     def display_speciality(self):
         """Отображаемое название специальности"""
-        from app.constants import SPECIALITIES
+        from app.constants.specialities import SPECIALITIES
         
         if self.speciality == 'other' and self.speciality_custom:
             return self.speciality_custom

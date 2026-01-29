@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_jwt_extended import jwt_required
 from app.utils.jwt_helpers import get_current_user
 from app.models import Patient, Booking, Doctor, Calendar, TimeSlot, PatientAlert
-from app.constants import SPECIALITIES
+from app.constants.specialities import SPECIALITIES
 from app import db
 import uuid
 from datetime import datetime, timedelta
@@ -246,21 +246,21 @@ def bookings():
 @bp.route('/search')
 def search():
     """�������� ������ ������"""
-    from app.constants import SPECIALITIES
+    from app.constants.specialities import SPECIALITIES
     return render_template('patient/search.html', specialities=SPECIALITIES)
 
 
 @bp.route('/calendar')
 def calendar():
     """��������� ��������� ��������"""
-    from app.constants import SPECIALITIES
+    from app.constants.specialities import SPECIALITIES
     return render_template('patient/calendar.html', specialities=SPECIALITIES)
 
 
 @patient_api.route('/available-slots-overview', methods=['GET'])
 def api_get_available_slots_overview():
     """API: ����� ��������� ������ �� �������������� (���������)"""
-    from app.constants import SPECIALITIES
+    from app.constants.specialities import SPECIALITIES
     
     # �������� ��� ��������� �����
     available_slots = TimeSlot.query.filter_by(status='available').all()
