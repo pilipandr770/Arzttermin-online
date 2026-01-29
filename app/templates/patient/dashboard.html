@@ -110,6 +110,7 @@
 </div>
 {% endblock %}
 
+{% block dashboard_scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     loadDashboard();
@@ -210,6 +211,7 @@ async function loadAlerts() {
         
         if (response.ok) {
             const data = await response.json();
+            console.log('Alerts data:', data);
             const alertsList = document.getElementById('alerts-list');
             alertsList.innerHTML = '';
             
@@ -316,12 +318,18 @@ async function loadAvailableSlotsOverview() {
         if (response.ok) {
             const data = await response.json();
             
+            // Проверяем что есть данные
+            if (!data || Object.keys(data).length === 0) {
+                console.log('No specialities data available');
+                return;
+            }
+            
             const container = document.getElementById('specialities-overview');
             container.innerHTML = '';
             
             // Группируем по категориям
             const categories = {};
-            Object.entries(data.overview).forEach(([key, speciality]) => {
+            Object.entries(data).forEach(([key, speciality]) => {
                 const category = speciality.category || 'other';
                 if (!categories[category]) {
                     categories[category] = [];
@@ -369,6 +377,7 @@ function searchSpeciality(speciality) {
     window.location.href = `/patient/search?speciality=${speciality}`;
 }
 </script>
+{% endblock %}
 
 {% block toolbar %}
 <a href="{{ url_for('patient_web.search') }}" class="btn btn-sm btn-outline-primary">

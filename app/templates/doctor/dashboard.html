@@ -2,6 +2,53 @@
 {% set title = "Arzt Dashboard" %}
 {% set user_type = "doctor" %}
 
+{% block head %}
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 20px;
+        border-left: 2px solid #dee2e6;
+    }
+    
+    .timeline-item:last-child {
+        border-left: 2px solid transparent;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        left: -30px;
+        top: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .timeline-marker i {
+        font-size: 16px;
+    }
+    
+    .timeline-content {
+        padding-left: 10px;
+    }
+    
+    .text-primary .timeline-marker i {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+</style>
+{% endblock %}
+
 {% block dashboard_content %}
 <div id="loading" class="text-center py-5">
     <div class="spinner-border" role="status">
@@ -12,67 +59,59 @@
 
 <div id="dashboard-content" style="display: none;">
     <div class="row">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Willkommen, <span id="doctor-name">Dr. Arzt</span>!</h5>
+        <!-- Правая колонка - Часы и следующий термин -->
+        <div class="col-md-4 order-md-2">
+            <!-- Часы реального времени -->
+            <div class="card mb-3 bg-primary text-white">
+                <div class="card-body text-center">
+                    <h6 class="mb-2"><i class="bi bi-clock"></i> Aktuelle Zeit</h6>
+                    <div id="current-time" class="display-4 fw-bold mb-2">--:--</div>
+                    <div id="current-date" class="small">Laden...</div>
+                </div>
+            </div>
+
+            <!-- Следующий термин -->
+            <div id="next-appointment-card" class="card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="bi bi-calendar-event"></i> Nächster Termin</h6>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted">Verwalten Sie Ihre Termine und Patienten.</p>
-
-                    <!-- Статус верификации -->
-                    <div id="verification-alert" class="alert alert-warning" style="display: none;">
-                        <i class="bi bi-exclamation-triangle"></i>
-                        Ihr Konto wird noch verifiziert. Sie erhalten eine Benachrichtigung, sobald die Verifizierung abgeschlossen ist.
+                    <div id="next-appointment-info">
+                        <!-- Загружается через JS -->
                     </div>
-
-                    <!-- Управление календарем -->
-                    <div class="mb-4">
-                        <h6>Kalender verwalten</h6>
-                        <div id="calendar-status">
-                            <!-- Статус календаря будет загружен через JS -->
+                    <hr>
+                    <div class="text-center">
+                        <div id="countdown-timer" class="display-6 fw-bold text-primary">
+                            --:--:--
                         </div>
+                        <small class="text-muted">bis zum Termin</small>
                     </div>
                 </div>
             </div>
 
-            <!-- Предстоящие приемы -->
-            <div id="bookings-section" class="card mt-4" style="display: none;">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Heutige Termine</h5>
-                </div>
-                <div class="card-body">
-                    <div id="bookings-list" class="list-group list-group-flush">
-                        <!-- Бронирования будут загружены через JS -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
             <!-- Статистика -->
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Praxis Statistik</h5>
+                    <h5 class="card-title mb-0">Heute</h5>
                 </div>
                 <div class="card-body">
                     <div class="row text-center">
-                        <div class="col-6">
-                            <div class="h4 text-primary" id="today-count">0</div>
-                            <small class="text-muted">Heute</small>
+                        <div class="col-6 mb-3">
+                            <div class="h3 text-primary" id="today-count">0</div>
+                            <small class="text-muted">Termine</small>
                         </div>
-                        <div class="col-6">
-                            <div class="h4 text-info" id="total-count">0</div>
-                            <small class="text-muted">Gesamt</small>
+                        <div class="col-6 mb-3">
+                            <div class="h3 text-success" id="week-fill-rate">0%</div>
+                            <small class="text-muted">Auslastung</small>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Быстрые действия -->
-            <div class="card mt-4">
+            <div class="card mt-3">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Schnellzugriff</h5>
+                    <h6 class="card-title mb-0">Schnellzugriff</h6>
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
@@ -89,9 +128,56 @@
                 </div>
             </div>
         </div>
+
+        <!-- Левая колонка - Таймлайн дня -->
+        <div class="col-md-8 order-md-1">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-list-ul"></i> Heutige Termine</h5>
+                </div>
+                <div class="card-body">
+                    <div id="timeline-container">
+                        <!-- Timeline загружается через renderTimeline() -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
+
+{% block dashboard_scripts %}
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+    border-left: 2px solid #dee2e6;
+    margin-left: 10px;
+}
+
+.timeline-item:last-child {
+    border-left: 2px solid transparent;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -11px;
+    background: white;
+}
+
+.timeline-marker i {
+    font-size: 1.2rem;
+}
+
+.timeline-content {
+    padding-left: 15px;
+}
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -119,66 +205,39 @@ async function loadDashboard() {
         if (response.ok) {
             const data = await response.json();
             
-            // Обновляем имя врача
-            document.getElementById('doctor-name').textContent = data.doctor.name;
-            
-            // Показываем статус верификации
-            if (!data.doctor.is_verified) {
-                document.getElementById('verification-alert').style.display = 'block';
-            }
-            
-            // Обновляем статус календаря
-            const calendarStatus = document.getElementById('calendar-status');
-            if (data.calendar.exists) {
-                calendarStatus.innerHTML = `
-                    <p class="text-success">
-                        <i class="bi bi-check-circle"></i>
-                        Ihr Kalender ist eingerichtet und aktiv.
-                    </p>
-                    <a href="/doctor/calendar" class="btn btn-primary">
-                        <i class="bi bi-calendar"></i> Kalender bearbeiten
-                    </a>
-                `;
-                document.getElementById('add-slot-btn').style.display = 'inline-block';
+            // Обновляем счетчики
+            if (data.today && data.today.appointments) {
+                document.getElementById('today-count').textContent = data.today.appointments.length;
+                renderTimeline(data.today.appointments);
             } else {
-                calendarStatus.innerHTML = `
-                    <p class="text-warning">
-                        <i class="bi bi-exclamation-circle"></i>
-                        Sie haben noch keinen Kalender eingerichtet.
-                    </p>
-                    <button class="btn btn-success" onclick="setupCalendar()">
-                        <i class="bi bi-plus-circle"></i> Kalender einrichten
-                    </button>
-                `;
+                document.getElementById('today-count').textContent = '0';
             }
             
-            // Показываем бронирования
-            if (data.upcoming_bookings && data.upcoming_bookings.length > 0) {
-                const bookingsList = document.getElementById('bookings-list');
-                bookingsList.innerHTML = '';
-                
-                data.upcoming_bookings.forEach(booking => {
-                    const bookingItem = document.createElement('div');
-                    bookingItem.className = 'list-group-item';
-                    bookingItem.innerHTML = `
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">${booking.patient_name}</h6>
-                            <small class="text-muted">${booking.time}</small>
+            if (data.this_week) {
+                const fillRate = Math.round(data.this_week.fill_rate || 0);
+                document.getElementById('week-fill-rate').textContent = `${fillRate}%`;
+            } else {
+                document.getElementById('week-fill-rate').textContent = '0%';
+            }
+            
+            // Обновляем следующий термин
+            if (data.today && data.today.next_appointment) {
+                displayNextAppointment(data.today.next_appointment);
+                startCountdown(data.today.next_appointment.start_time);
+            } else {
+                const card = document.getElementById('next-appointment-card');
+                if (card) {
+                    card.querySelector('.card-body').innerHTML = `
+                        <div class="text-center text-muted p-4">
+                            <i class="bi bi-calendar-x" style="font-size: 2rem;"></i>
+                            <p class="mt-2">Keine Termine heute</p>
                         </div>
-                        <p class="mb-1">${booking.date}</p>
-                        <small class="text-${booking.status === 'confirmed' ? 'success' : 'warning'}">
-                            ${booking.status === 'confirmed' ? 'Bestätigt' : 'Ausstehend'}
-                        </small>
                     `;
-                    bookingsList.appendChild(bookingItem);
-                });
-                
-                document.getElementById('bookings-section').style.display = 'block';
-                document.getElementById('today-count').textContent = data.upcoming_bookings.length;
+                }
             }
             
-            // Обновляем общую статистику
-            document.getElementById('total-count').textContent = '0'; // TODO: добавить в API
+            // Запускаем часы
+            startClock();
             
             // Показываем контент
             document.getElementById('loading').style.display = 'none';
@@ -203,6 +262,158 @@ async function loadDashboard() {
             </div>
         `;
     }
+}
+
+// Годинник в реальному часі
+function startClock() {
+    updateClock();
+    setInterval(updateClock, 1000);
+}
+
+function updateClock() {
+    const now = new Date();
+    
+    // Оновлюємо час
+    const timeStr = now.toLocaleTimeString('de-DE', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    document.getElementById('current-time').textContent = timeStr;
+    
+    // Оновлюємо дату
+    const dateStr = now.toLocaleDateString('de-DE', { 
+        weekday: 'long',
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    document.getElementById('current-date').textContent = dateStr;
+}
+
+// Таймер до наступного терміну
+let countdownInterval = null;
+
+function startCountdown(startTimeISO) {
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+    }
+    
+    updateCountdown(startTimeISO);
+    countdownInterval = setInterval(() => updateCountdown(startTimeISO), 1000);
+}
+
+function updateCountdown(startTimeISO) {
+    const now = new Date();
+    const appointmentTime = new Date(startTimeISO);
+    const diff = appointmentTime - now;
+    
+    if (diff <= 0) {
+        document.getElementById('countdown-timer').innerHTML = `
+            <span class="text-danger">ЗАРАЗ</span>
+        `;
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+        }
+        return;
+    }
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    let timeStr = '';
+    if (hours > 0) {
+        timeStr = `${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+        timeStr = `${minutes}m ${seconds}s`;
+    } else {
+        timeStr = `${seconds}s`;
+    }
+    
+    document.getElementById('countdown-timer').textContent = timeStr;
+}
+
+// Відображення наступного терміну
+function displayNextAppointment(appointment) {
+    const time = new Date(appointment.start_time).toLocaleTimeString('de-DE', { 
+        hour: '2-digit', 
+        minute: '2-digit'
+    });
+    
+    const info = `
+        <div class="text-center">
+            <div class="mb-2">
+                <i class="bi bi-person-circle" style="font-size: 2rem;"></i>
+            </div>
+            <h6 class="mb-1">${appointment.patient_name || 'Пацієнт'}</h6>
+            <p class="text-muted mb-0">
+                <i class="bi bi-clock"></i> ${time}
+            </p>
+            ${appointment.patient_phone ? `
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-telephone"></i> ${appointment.patient_phone}
+                </p>
+            ` : ''}
+        </div>
+    `;
+    
+    document.getElementById('next-appointment-info').innerHTML = info;
+}
+
+// Таймлайн дня
+function renderTimeline(appointments) {
+    const container = document.getElementById('timeline-container');
+    if (!container || !appointments || appointments.length === 0) {
+        if (container) {
+            container.innerHTML = '<p class="text-muted text-center">Keine Termine heute</p>';
+        }
+        return;
+    }
+    
+    const now = new Date();
+    const sortedAppts = [...appointments].sort((a, b) => 
+        new Date(a.start_time) - new Date(b.start_time)
+    );
+    
+    let html = '<div class="timeline">';
+    
+    sortedAppts.forEach((appt, index) => {
+        const apptTime = new Date(appt.start_time);
+        const timeStr = apptTime.toLocaleTimeString('de-DE', { 
+            hour: '2-digit', 
+            minute: '2-digit'
+        });
+        
+        const isPast = apptTime < now;
+        const isCurrent = !isPast && (index === 0 || new Date(sortedAppts[index-1].start_time) < now);
+        
+        let statusClass = 'text-muted';
+        let icon = 'bi-circle';
+        
+        if (isPast) {
+            statusClass = 'text-success';
+            icon = 'bi-check-circle-fill';
+        } else if (isCurrent) {
+            statusClass = 'text-primary';
+            icon = 'bi-arrow-right-circle-fill';
+        }
+        
+        html += `
+            <div class="timeline-item ${statusClass}">
+                <div class="timeline-marker">
+                    <i class="bi ${icon}"></i>
+                </div>
+                <div class="timeline-content">
+                    <div class="fw-bold">${timeStr}</div>
+                    <div class="small">${appt.patient_name || 'Пацієнт'}</div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 function setupCalendar() {
@@ -439,6 +650,7 @@ async function generateSlots() {
     }
 }
 </script>
+{% endblock %}
 
 {% block toolbar %}
 <button class="btn btn-sm btn-outline-success" id="add-slot-btn" style="display: none;" onclick="addTimeSlot()">

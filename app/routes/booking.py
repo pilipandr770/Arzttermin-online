@@ -4,6 +4,7 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import Booking, TimeSlot, Patient, Doctor
+from app.constants import SPECIALITIES
 from app import db
 from datetime import datetime, timedelta
 import uuid
@@ -124,7 +125,7 @@ def get_booking(booking_id):
                     'last_name': doctor.last_name,
                     'full_name': f"{doctor.first_name} {doctor.last_name}",
                     'speciality': doctor.speciality,
-                    'speciality_display': doctor.get_speciality_display()
+                    'speciality_display': SPECIALITIES.get(doctor.speciality, {}).get('de', doctor.speciality)
                 },
                 'practice': {
                     'id': str(practice.id) if practice else None,
@@ -175,7 +176,7 @@ def get_booking_by_code(booking_code):
                     'last_name': doctor.last_name,
                     'full_name': f"{doctor.first_name} {doctor.last_name}",
                     'speciality': doctor.speciality,
-                    'speciality_display': doctor.get_speciality_display()
+                    'speciality_display': SPECIALITIES.get(doctor.speciality, {}).get('de', doctor.speciality)
                 },
                 'practice': {
                     'name': practice.name if practice else None,

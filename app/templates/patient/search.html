@@ -123,10 +123,36 @@ function displayDoctors(doctors) {
     const resultsDiv = document.getElementById('search-results');
     
     if (doctors.length === 0) {
+        // Получаем текущие критерии поиска
+        const speciality = document.getElementById('search-speciality').value;
+        const city = document.getElementById('search-city').value;
+        
+        const specialityName = speciality ? getSpecialityName(speciality) : 'dieser Fachrichtung';
+        const cityText = city ? ` in ${city}` : '';
+        
         resultsDiv.innerHTML = `
             <div class="text-center py-5">
                 <i class="bi bi-search text-muted" style="font-size: 3rem;"></i>
-                <p class="text-muted mt-3">Keine Ärzte gefunden. Versuchen Sie andere Suchkriterien.</p>
+                <h5 class="mt-3">Keine Ärzte gefunden</h5>
+                <p class="text-muted">Aktuell keine Termine verfügbar für ${specialityName}${cityText}</p>
+                
+                <div class="card mt-4 mx-auto" style="max-width: 500px;">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="bi bi-bell text-primary"></i> 
+                            Benachrichtigung einrichten?
+                        </h6>
+                        <p class="card-text small text-muted">
+                            Wir informieren Sie automatisch, sobald ein Termin verfügbar wird.
+                        </p>
+                        <button class="btn btn-primary w-100" onclick="createSearchAlert()">
+                            <i class="bi bi-bell-fill"></i> Ja, benachrichtigen Sie mich
+                        </button>
+                        <button class="btn btn-outline-secondary w-100 mt-2" onclick="clearFilters()">
+                            Andere Suchkriterien
+                        </button>
+                    </div>
+                </div>
             </div>
         `;
         return;
@@ -326,10 +352,22 @@ function formatDate(dateStr) {
     });
 }
 
-async function createAlert(doctorId, doctorName, speciality) {
-    if (!confirm(`Möchten Sie eine Benachrichtigung einrichten für: ${doctorName}?\n\nSie werden informiert, wenn ein neuer Termin verfügbar wird.`)) {
+// Создать алерт по критериям поиска (когда результатов нет)
+async function createSearchAlert() {
+    const speciality = document.getElementById('search-speciality').value;
+    const city = document.getElementById('search-city').value;
+    
+    if (!speciality) {
+        alert('Bitte wählen Sie mindestens eine Fachrichtung aus');
         return;
     }
+    
+    const payload = {
+        speciality: speciality,
+        city: city || null
+    };
+    
+    console.log('Creating search alert with payload:', payload);
     
     try {
         const response = await fetch('/api/patient/alerts', {
@@ -338,17 +376,62 @@ async function createAlert(doctorId, doctorName, speciality) {
                 'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                doctor_id: doctorId,
-                speciality: speciality
-            })
+            body: JSON.stringify(payload)
         });
         
         if (response.ok) {
             const data = await response.json();
+            console.log('Alert created:', data);
+            alert('Benachrichtigung erfolgreich eingerichtet!\n\nSie werden informiert, sobald ein Termin verfügbar wird.\n\nSie können Ihre Benachrichtigungen im Dashboard verwalten.');
+            // Перенаправляем в дашборд
+            window.location.href = '/patient/dashboard';
+        } else {
+            const error = await response.json();
+            console.error('Error response:', error);
+            console.error('Full error details:', JSON.stringify(error, null, 2));
+            if (error.error === 'Alert already exists for this doctor/speciality') {
+                alert('Sie haben bereits eine Benachrichtigung für diese Suche eingerichtet.\n\nSie können sie in Ihrem Dashboard verwalten.');
+                window.location.href = '/patient/dashboard';
+            } else {
+                alert('Fehler: ' + (error.error || 'Konnte Benachrichtigung nicht erstellen'));
+            }
+        }
+    } catch (error) {
+        console.error('Error creating alert:', error);
+        alert('Fehler beim Erstellen der Benachrichtigung');
+    }
+}
+
+// Создать алерт для конкретного врача
+async function createAlert(doctorId, doctorName, speciality) {
+    if (!confirm(`Möchten Sie eine Benachrichtigung einrichten für: ${doctorName}?\n\nSie werden informiert, wenn ein neuer Termin verfügbar wird.`)) {
+        return;
+    }
+    
+    const payload = {
+        doctor_id: doctorId,
+        speciality: speciality
+    };
+    
+    console.log('Creating alert with payload:', payload);
+    
+    try {
+        const response = await fetch('/api/patient/alerts', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('Alert created:', data);
             alert('Benachrichtigung erfolgreich eingerichtet!\n\nSie erhalten eine Nachricht, sobald ein Termin verfügbar wird.');
         } else {
             const error = await response.json();
+            console.error('Error response:', error);
             alert('Fehler: ' + (error.error || 'Konnte Benachrichtigung nicht erstellen'));
         }
     } catch (error) {

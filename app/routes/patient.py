@@ -4,6 +4,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import Patient, Booking, Doctor, Calendar, TimeSlot, PatientAlert
+from app.constants import SPECIALITIES
 from app import db
 import uuid
 from datetime import datetime, timedelta
@@ -47,6 +48,12 @@ def api_dashboard():
         doctor = next_booking.timeslot.calendar.doctor
         practice = doctor.practice
         
+        # Извлекаем city из JSON address
+        practice_city = None
+        if practice:
+            address_dict = practice.address_dict
+            practice_city = address_dict.get('city') if isinstance(address_dict, dict) else None
+        
         next_appointment = {
             'id': str(next_booking.id),
             'booking_code': next_booking.booking_code,
@@ -57,13 +64,13 @@ def api_dashboard():
                 'id': str(doctor.id),
                 'name': f'{doctor.first_name} {doctor.last_name}',
                 'speciality': doctor.speciality,
-                'speciality_display': doctor.get_speciality_display()
+                'speciality_display': SPECIALITIES.get(doctor.speciality, {}).get('de', doctor.speciality)
             },
             'practice': {
                 'name': practice.name if practice else None,
                 'address': practice.address if practice else None,
                 'phone': practice.phone if practice else None,
-                'city': practice.city if practice else None
+                'city': practice_city
             } if practice else None,
             'cancellable': next_booking.can_be_cancelled(),
             'cancellable_until': next_booking.cancellable_until.isoformat() if next_booking.cancellable_until else None
@@ -83,7 +90,7 @@ def api_dashboard():
             'date': booking.timeslot.start_time.strftime('%Y-%m-%d'),
             'time': booking.timeslot.start_time.strftime('%H:%M'),
             'doctor_name': f'{doctor.first_name} {doctor.last_name}',
-            'speciality': doctor.get_speciality_display(),
+            'speciality': SPECIALITIES.get(doctor.speciality, {}).get('de', doctor.speciality),
             'status': booking.status
         })
     
@@ -119,15 +126,21 @@ def api_dashboard():
                     TimeSlot.start_time > now
                 ).count()
                 
+                # Извлекаем city из JSON address
+                practice_city = None
+                if doc.practice:
+                    address_dict = doc.practice.address_dict
+                    practice_city = address_dict.get('city') if isinstance(address_dict, dict) else None
+                
                 recommended_doctors.append({
                     'id': str(doc.id),
                     'name': f'{doc.first_name} {doc.last_name}',
                     'speciality': doc.speciality,
-                    'speciality_display': doc.get_speciality_display(),
+                    'speciality_display': SPECIALITIES.get(doc.speciality, {}).get('de', doc.speciality),
                     'free_slots_count': free_count,
                     'practice': {
                         'name': doc.practice.name if doc.practice else None,
-                        'city': doc.practice.city if doc.practice else None
+                        'city': practice_city
                     } if doc.practice else None
                 })
     
@@ -386,85 +399,6 @@ def api_get_doctor_slots(doctor_id):
     })
 
 
-@patient_api.route('/alerts', methods=['GET', 'POST', 'DELETE'])
-@jwt_required()
-def api_manage_alerts():
-    """API: Управление алертами пациента"""
-    identity = get_jwt_identity()
-    if identity.get('type') != 'patient':
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    patient = Patient.query.get(uuid.UUID(identity['id']))
-    if not patient:
-        return jsonify({'error': 'Patient not found'}), 404
-    
-    if request.method == 'GET':
-        # Получить все алерты пациента
-        alerts = PatientAlert.query.filter_by(patient_id=patient.id).all()
-        alerts_data = [{
-            'id': str(alert.id),
-            'doctor_id': str(alert.doctor_id),
-            'doctor_name': f'{alert.doctor.first_name} {alert.doctor.last_name}',
-            'speciality': alert.doctor.speciality,
-            'created_at': alert.created_at.isoformat(),
-            'is_active': alert.is_active
-        } for alert in alerts]
-        
-        return jsonify({'alerts': alerts_data})
-    
-    elif request.method == 'POST':
-        # Создать новый алерт
-        data = request.get_json()
-        doctor_id = data.get('doctor_id')
-        
-        if not doctor_id:
-            return jsonify({'error': 'Doctor ID required'}), 400
-        
-        doctor = Doctor.query.get(uuid.UUID(doctor_id))
-        if not doctor:
-            return jsonify({'error': 'Doctor not found'}), 404
-        
-        # Проверяем, не существует ли уже алерт
-        existing = PatientAlert.query.filter_by(
-            patient_id=patient.id,
-            doctor_id=doctor.id
-        ).first()
-        
-        if existing:
-            return jsonify({'error': 'Alert already exists'}), 400
-        
-        alert = PatientAlert(
-            patient_id=patient.id,
-            doctor_id=doctor.id
-        )
-        db.session.add(alert)
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Alert created successfully',
-            'alert_id': str(alert.id)
-        })
-    
-    elif request.method == 'DELETE':
-        # Удалить алерт
-        alert_id = request.args.get('alert_id')
-        if not alert_id:
-            return jsonify({'error': 'Alert ID required'}), 400
-        
-        alert = PatientAlert.query.filter_by(
-            id=uuid.UUID(alert_id),
-            patient_id=patient.id
-        ).first()
-        
-        if not alert:
-            return jsonify({'error': 'Alert not found'}), 404
-        
-        db.session.delete(alert)
-        db.session.commit()
-        
-        return jsonify({'message': 'Alert deleted successfully'})
-
-
 @patient_api.route('/book', methods=['POST'])
 @jwt_required()
 def api_book_slot():
@@ -619,12 +553,20 @@ def api_create_alert():
         return jsonify({'error': 'Either doctor_id or speciality must be provided'}), 400
     
     # Проверяем что такой алерт еще не существует
-    existing_alert = PatientAlert.query.filter_by(
-        patient_id=patient.id,
-        doctor_id=uuid.UUID(doctor_id) if doctor_id else None,
-        speciality=speciality if not doctor_id else None,
-        is_active=True
-    ).first()
+    if doctor_id:
+        # Если указан конкретный врач, проверяем по doctor_id
+        existing_alert = PatientAlert.query.filter_by(
+            patient_id=patient.id,
+            doctor_id=uuid.UUID(doctor_id),
+            is_active=True
+        ).first()
+    else:
+        # Если только специальность, проверяем по speciality
+        existing_alert = PatientAlert.query.filter_by(
+            patient_id=patient.id,
+            speciality=speciality,
+            is_active=True
+        ).first()
     
     if existing_alert:
         return jsonify({'error': 'Alert already exists for this doctor/speciality'}), 400
