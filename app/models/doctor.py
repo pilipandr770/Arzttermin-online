@@ -167,3 +167,4 @@ class Doctor(db.Model):
     # Relationships
     practice = db.relationship('Practice', back_populates='doctors')
     calendar = db.relationship('Calendar', back_populates='doctor', uselist=False, cascade='all, delete-orphan')
+    calendar_integrations = db.relationship('CalendarIntegration', back_populates='doctor', cascade='all, delete-orphan')

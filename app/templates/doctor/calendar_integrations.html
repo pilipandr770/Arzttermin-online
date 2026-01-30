@@ -1,0 +1,517 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Kalenderintegrationen - TerminFinder{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">📅 Kalenderintegrationen</h1>
+            <p class="text-muted mb-4">
+                Verbinden Sie Ihre externen Kalender, um eine nahtlose Synchronisierung zu gewährleisten.
+            </p>
+        </div>
+    </div>
+
+    <!-- Alert für Erfolg/Fehler -->
+    <div id="alert-container"></div>
+
+    <!-- Google Calendar Integration -->
+    <div class="row mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100" id="google-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="me-3">
+                            <svg width="48" height="48" viewBox="0 0 48 48">
+                                <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                                <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                                <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                                <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Google Calendar</h5>
+                            <small class="text-muted" id="google-status">Nicht verbunden</small>
+                        </div>
+                    </div>
+                    
+                    <div id="google-connected" style="display: none;">
+                        <p class="text-success"><i class="fas fa-check-circle"></i> Verbunden</p>
+                        <p class="small"><strong>Letzte Synchronisation:</strong> <span id="google-last-sync">-</span></p>
+                        <button class="btn btn-sm btn-primary me-2" onclick="syncIntegration('google')">
+                            <i class="fas fa-sync"></i> Jetzt synchronisieren
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary me-2" onclick="showSettings('google')">
+                            <i class="fas fa-cog"></i> Einstellungen
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="disconnectIntegration('google')">
+                            <i class="fas fa-unlink"></i> Trennen
+                        </button>
+                    </div>
+                    
+                    <div id="google-disconnected">
+                        <p class="text-muted small mb-3">
+                            Synchronisieren Sie Ihre TerminFinder-Termine automatisch mit Google Calendar.
+                        </p>
+                        <button class="btn btn-primary" onclick="connectGoogle()">
+                            <i class="fas fa-link"></i> Mit Google verbinden
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Apple Calendar / iCloud Integration -->
+        <div class="col-12 col-lg-6">
+            <div class="card h-100" id="apple-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="me-3">
+                            <svg width="48" height="48" viewBox="0 0 48 48">
+                                <path fill="#000000" d="M35.6,22.3c-0.1-3.6,2.9-5.3,3-5.4c-1.6-2.4-4.2-2.7-5.1-2.8c-2.2-0.2-4.2,1.3-5.3,1.3c-1.1,0-2.8-1.3-4.6-1.2c-2.4,0-4.6,1.4-5.8,3.5c-2.5,4.3-0.6,10.7,1.8,14.2c1.2,1.7,2.6,3.6,4.4,3.5c1.8-0.1,2.5-1.1,4.6-1.1c2.1,0,2.7,1.1,4.6,1.1c1.9,0,3.1-1.7,4.3-3.4c1.4-2,1.9-3.9,2-4C38.6,27.9,35.7,26.5,35.6,22.3z"/>
+                                <path fill="#000000" d="M31.8,11.5c1-1.2,1.6-2.9,1.4-4.5c-1.4,0.1-3,0.9-4,2.1c-0.9,1.1-1.7,2.8-1.5,4.5C29.2,13.6,30.8,12.7,31.8,11.5z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Apple Calendar / iCloud</h5>
+                            <small class="text-muted" id="apple-status">Nicht verbunden</small>
+                        </div>
+                    </div>
+                    
+                    <div id="apple-connected" style="display: none;">
+                        <p class="text-success"><i class="fas fa-check-circle"></i> Verbunden</p>
+                        <p class="small"><strong>Letzte Synchronisation:</strong> <span id="apple-last-sync">-</span></p>
+                        <button class="btn btn-sm btn-primary me-2" onclick="syncIntegration('apple')">
+                            <i class="fas fa-sync"></i> Jetzt synchronisieren
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary me-2" onclick="showSettings('apple')">
+                            <i class="fas fa-cog"></i> Einstellungen
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="disconnectIntegration('apple')">
+                            <i class="fas fa-unlink"></i> Trennen
+                        </button>
+                    </div>
+                    
+                    <div id="apple-disconnected">
+                        <p class="text-muted small mb-3">
+                            Verbinden Sie sich via CalDAV mit iCloud Calendar.
+                        </p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#appleModal">
+                            <i class="fas fa-link"></i> Mit iCloud verbinden
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outlook Calendar Integration -->
+    <div class="row mb-4">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100" id="outlook-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="me-3">
+                            <svg width="48" height="48" viewBox="0 0 48 48">
+                                <path fill="#0078D4" d="M24,4L4,12v24l20,8l20-8V12L24,4z M24,28c-3.3,0-6-2.7-6-6s2.7-6,6-6s6,2.7,6,6S27.3,28,24,28z"/>
+                                <circle fill="#FFFFFF" cx="24" cy="22" r="4"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Outlook / Office 365</h5>
+                            <small class="text-muted" id="outlook-status">Nicht verbunden</small>
+                        </div>
+                    </div>
+                    
+                    <div id="outlook-connected" style="display: none;">
+                        <p class="text-success"><i class="fas fa-check-circle"></i> Verbunden</p>
+                        <p class="small"><strong>Letzte Synchronisation:</strong> <span id="outlook-last-sync">-</span></p>
+                        <button class="btn btn-sm btn-primary me-2" onclick="syncIntegration('outlook')">
+                            <i class="fas fa-sync"></i> Jetzt synchronisieren
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary me-2" onclick="showSettings('outlook')">
+                            <i class="fas fa-cog"></i> Einstellungen
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="disconnectIntegration('outlook')">
+                            <i class="fas fa-unlink"></i> Trennen
+                        </button>
+                    </div>
+                    
+                    <div id="outlook-disconnected">
+                        <p class="text-muted small mb-3">
+                            Synchronisieren Sie mit Microsoft Outlook oder Office 365 Calendar.
+                        </p>
+                        <button class="btn btn-primary" onclick="connectOutlook()">
+                            <i class="fas fa-link"></i> Mit Outlook verbinden
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Synchronisationseinstellungen -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">⚙️ Synchronisationseinstellungen</h5>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="create-external-events" checked>
+                        <label class="form-check-label" for="create-external-events">
+                            Termine automatisch im externen Kalender erstellen
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="block-conflicts" checked>
+                        <label class="form-check-label" for="block-conflicts">
+                            TerminFinder-Slots automatisch blockieren bei externen Terminen
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="import-titles">
+                        <label class="form-check-label" for="import-titles">
+                            Titel externer Termine importieren (kann sensible Daten enthalten)
+                        </label>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="saveGlobalSettings()">
+                        <i class="fas fa-save"></i> Einstellungen speichern
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Apple Calendar Modal -->
+<div class="modal fade" id="appleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">iCloud Calendar verbinden</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6 class="alert-heading"><i class="bi bi-info-circle"></i> So erhalten Sie ein App-spezifisches Passwort:</h6>
+                    <ol class="mb-0 small">
+                        <li>Gehen Sie zu <a href="https://appleid.apple.com/" target="_blank" class="alert-link">appleid.apple.com</a></li>
+                        <li>Melden Sie sich mit Ihrer Apple ID an</li>
+                        <li>Wählen Sie <strong>Sicherheit</strong> → <strong>App-spezifische Passwörter</strong></li>
+                        <li>Klicken Sie auf <strong>Passwort generieren</strong></li>
+                        <li>Geben Sie "TerminFinder" als Namen ein</li>
+                        <li>Kopieren Sie das generierte Passwort (xxxx-xxxx-xxxx-xxxx)</li>
+                    </ol>
+                    <a href="https://support.apple.com/de-de/HT204397" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                        <i class="bi bi-book"></i> Detaillierte Anleitung
+                    </a>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="caldav-url" class="form-label">CalDAV URL</label>
+                    <input type="text" class="form-control" id="caldav-url" value="https://caldav.icloud.com" readonly>
+                    <small class="text-muted">Standard-URL für iCloud</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="caldav-username" class="form-label">Apple ID (E-Mail)</label>
+                    <input type="email" class="form-control" id="caldav-username" placeholder="ihre@icloud.com">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="caldav-password" class="form-label">App-spezifisches Passwort</label>
+                    <input type="password" class="form-control" id="caldav-password" placeholder="xxxx-xxxx-xxxx-xxxx">
+                    <small class="text-muted">Nicht Ihr normales Apple ID Passwort!</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" onclick="connectApple()">Verbinden</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Globale Variablen
+let integrations = {};
+
+// Beim Laden der Seite
+document.addEventListener('DOMContentLoaded', function() {
+    loadIntegrations();
+});
+
+// Integrationen laden
+async function loadIntegrations() {
+    try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch('/api/doctor/calendar-integrations', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const data = await response.json();
+        integrations = {};
+        
+        data.integrations.forEach(integration => {
+            integrations[integration.provider] = integration;
+            updateIntegrationUI(integration);
+        });
+        
+    } catch (error) {
+        console.error('Fehler beim Laden der Integrationen:', error);
+    }
+}
+
+// UI für Integration aktualisieren
+function updateIntegrationUI(integration) {
+    const provider = integration.provider;
+    const connected = integration.sync_status !== 'disconnected';
+    
+    document.getElementById(`${provider}-connected`).style.display = connected ? 'block' : 'none';
+    document.getElementById(`${provider}-disconnected`).style.display = connected ? 'none' : 'block';
+    document.getElementById(`${provider}-status`).textContent = connected ? 'Verbunden' : 'Nicht verbunden';
+    
+    if (connected && integration.last_sync_at) {
+        const lastSync = new Date(integration.last_sync_at);
+        const formatted = lastSync.toLocaleString('de-DE');
+        document.getElementById(`${provider}-last-sync`).textContent = formatted;
+    }
+}
+
+// Google Calendar verbinden
+async function connectGoogle() {
+    try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            showAlert('danger', 'Bitte melden Sie sich erneut an');
+            setTimeout(() => window.location.href = '/doctor/login', 2000);
+            return;
+        }
+        
+        const response = await fetch('/api/doctor/calendar-integrations/connect/google', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.status === 401) {
+            showAlert('danger', 'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an');
+            setTimeout(() => window.location.href = '/doctor/login', 2000);
+            return;
+        }
+        
+        const data = await response.json();
+        if (data.authorization_url) {
+            window.location.href = data.authorization_url;
+        } else if (data.error) {
+            showAlert('danger', data.error);
+        }
+        
+    } catch (error) {
+        console.error('Connect Google error:', error);
+        showAlert('danger', 'Fehler beim Verbinden mit Google Calendar');
+    }
+}
+
+// Apple Calendar verbinden
+async function connectApple() {
+    const url = document.getElementById('caldav-url').value;
+    const username = document.getElementById('caldav-username').value;
+    const password = document.getElementById('caldav-password').value;
+    
+    if (!username || !password) {
+        showAlert('warning', 'Bitte füllen Sie alle Felder aus');
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            showAlert('danger', 'Bitte melden Sie sich erneut an');
+            setTimeout(() => window.location.href = '/doctor/login', 2000);
+            return;
+        }
+        
+        const response = await fetch('/api/doctor/calendar-integrations/connect/apple', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                caldav_url: url,
+                caldav_username: username,
+                caldav_password: password
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.status === 401 && data.error && data.error.includes('CalDAV')) {
+            // Ошибка аутентификации CalDAV - не session, а неправильные credentials
+            showAlert('danger', 'Fehler: ' + data.error + ' Prüfen Sie Ihre Apple ID und das App-spezifische Passwort.');
+            return;
+        }
+        
+        if (response.status === 401) {
+            showAlert('danger', 'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an');
+            setTimeout(() => window.location.href = '/doctor/login', 2000);
+            return;
+        }
+        
+        if (data.success) {
+            showAlert('success', 'iCloud Calendar erfolgreich verbunden!');
+            bootstrap.Modal.getInstance(document.getElementById('appleModal')).hide();
+            loadIntegrations();
+        } else {
+            showAlert('danger', data.error || 'Verbindung fehlgeschlagen');
+        }
+        
+    } catch (error) {
+        console.error('Connect Apple error:', error);
+        showAlert('danger', 'Fehler beim Verbinden mit iCloud Calendar');
+    }
+}
+
+// Outlook verbinden
+async function connectOutlook() {
+    try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            showAlert('danger', 'Bitte melden Sie sich erneut an');
+            setTimeout(() => window.location.href = '/doctor/login', 2000);
+            return;
+        }
+        
+        const response = await fetch('/api/doctor/calendar-integrations/connect/outlook', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.status === 401) {
+            showAlert('danger', 'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an');
+            setTimeout(() => window.location.href = '/doctor/login', 2000);
+            return;
+        }
+        
+        const data = await response.json();
+        if (data.authorization_url) {
+            window.location.href = data.authorization_url;
+        } else if (data.error) {
+            showAlert('danger', data.error);
+        }
+        
+    } catch (error) {
+        console.error('Connect Outlook error:', error);
+        showAlert('danger', 'Fehler beim Verbinden mit Outlook');
+    }
+}
+
+// Integration synchronisieren
+async function syncIntegration(provider) {
+    const integration = integrations[provider];
+    if (!integration) return;
+    
+    showAlert('info', 'Synchronisation wird gestartet...');
+    
+    try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`/api/doctor/calendar-integrations/${integration.id}/sync`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('success', `Synchronisation abgeschlossen. ${data.external_events_count} Termine gefunden, ${data.slots_blocked} Slots blockiert.`);
+            loadIntegrations();
+        } else {
+            showAlert('danger', data.error || 'Synchronisation fehlgeschlagen');
+        }
+        
+    } catch (error) {
+        showAlert('danger', 'Fehler bei der Synchronisation');
+    }
+}
+
+// Integration trennen
+async function disconnectIntegration(provider) {
+    if (!confirm(`Möchten Sie die Verbindung zu ${provider} wirklich trennen?`)) {
+        return;
+    }
+    
+    const integration = integrations[provider];
+    if (!integration) return;
+    
+    try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`/api/doctor/calendar-integrations/${integration.id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('success', 'Integration erfolgreich getrennt');
+            loadIntegrations();
+        }
+        
+    } catch (error) {
+        showAlert('danger', 'Fehler beim Trennen der Integration');
+    }
+}
+
+// Alert anzeigen
+function showAlert(type, message) {
+    const container = document.getElementById('alert-container');
+    container.innerHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Einstellungen-Modal (Platzhalter)
+function showSettings(provider) {
+    alert(`Einstellungen für ${provider} - noch nicht implementiert`);
+}
+
+// Globale Einstellungen speichern
+function saveGlobalSettings() {
+    showAlert('success', 'Einstellungen gespeichert');
+}
+
+// URL-Parameter prüfen (OAuth Callback Success)
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('success') === 'true') {
+    const provider = urlParams.get('provider');
+    showAlert('success', `${provider} erfolgreich verbunden!`);
+    // URL bereinigen
+    window.history.replaceState({}, document.title, window.location.pathname);
+    loadIntegrations();
+}
+</script>
+{% endblock %}

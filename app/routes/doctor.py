@@ -30,6 +30,12 @@ def calendar_test():
     return render_template('doctor/calendar_test.html')
 
 
+@bp.route('/calendar-integrations')
+def calendar_integrations():
+    """Страница управления интеграциями календарей"""
+    return render_template('doctor/calendar_integrations.html')
+
+
 @doctor_api.route('/dashboard')
 @jwt_required()
 def api_dashboard():
