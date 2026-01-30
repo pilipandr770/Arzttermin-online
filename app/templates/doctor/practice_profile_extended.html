@@ -1,0 +1,408 @@
+{% extends "base_dashboard.html" %}
+{% set title = "Praxis Profil erweitert" %}
+{% set user_type = "doctor" %}
+
+{% block dashboard_content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-hospital"></i> Erweitertes Praxis Profil
+                    </h5>
+                    <div>
+                        <span class="badge bg-info" id="profile-completeness">0% vollständig</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Tabs Navigation -->
+                    <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button">
+                                <i class="bi bi-info-circle"></i> Grundinformationen
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="media-tab" data-bs-toggle="tab" data-bs-target="#media" type="button">
+                                <i class="bi bi-images"></i> Medien
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="services-tab" data-bs-toggle="tab" data-bs-target="#services" type="button">
+                                <i class="bi bi-card-list"></i> Leistungen
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="equipment-tab" data-bs-toggle="tab" data-bs-target="#equipment" type="button">
+                                <i class="bi bi-tools"></i> Ausstattung
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="insurance-tab" data-bs-toggle="tab" data-bs-target="#insurance" type="button">
+                                <i class="bi bi-shield-check"></i> Versicherungen
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="features-tab" data-bs-toggle="tab" data-bs-target="#features" type="button">
+                                <i class="bi bi-star"></i> Besonderheiten
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="faq-tab" data-bs-toggle="tab" data-bs-target="#faq" type="button">
+                                <i class="bi bi-question-circle"></i> FAQ
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tabs Content -->
+                    <form id="extended-practice-form">
+                        <div class="tab-content" id="profileTabsContent">
+                            <!-- TAB 1: Grundinformationen -->
+                            <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                                <h6 class="text-primary mb-3">Kontaktdaten & Online-Präsenz</h6>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Telefon <span class="text-danger">*</span></label>
+                                        <input type="tel" class="form-control" id="phone" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Notfall-Telefon</label>
+                                        <input type="tel" class="form-control" id="emergency_phone">
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">WhatsApp</label>
+                                        <input type="tel" class="form-control" id="whatsapp_number" placeholder="+49...">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Telegram</label>
+                                        <input type="text" class="form-control" id="telegram_username" placeholder="@username">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Website</label>
+                                        <input type="url" class="form-control" id="website" placeholder="https://...">
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <label class="form-label">URL-Slug (für Praxis-Seite)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">terminfinder.de/practice/</span>
+                                            <input type="text" class="form-control" id="slug" placeholder="meine-praxis-muenchen">
+                                        </div>
+                                        <small class="text-muted">Nur Kleinbuchstaben, Zahlen und Bindestriche</small>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <label class="form-label">Beschreibung der Praxis</label>
+                                        <textarea class="form-control" id="description" rows="5" 
+                                            placeholder="Stellen Sie Ihre Praxis vor: Geschichte, Philosophie, Behandlungsschwerpunkte..."></textarea>
+                                    </div>
+                                </div>
+
+                                <h6 class="text-primary mb-3 mt-4">Soziale Medien</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-facebook"></i> Facebook</label>
+                                        <input type="url" class="form-control" id="social_facebook">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-instagram"></i> Instagram</label>
+                                        <input type="url" class="form-control" id="social_instagram">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-linkedin"></i> LinkedIn</label>
+                                        <input type="url" class="form-control" id="social_linkedin">
+                                    </div>
+                                </div>
+
+                                <h6 class="text-primary mb-3 mt-4">Anfahrt & Parken</h6>
+                                <div class="row mb-3">
+                                    <div class="col-12">
+                                        <label class="form-label">Parkinformationen</label>
+                                        <textarea class="form-control" id="parking_info" rows="3"
+                                            placeholder="Z.B.: Kostenlose Parkplätze vor der Praxis, Tiefgarage verfügbar..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TAB 2: Medien -->
+                            <div class="tab-pane fade" id="media" role="tabpanel">
+                                <h6 class="text-primary mb-3">Foto-Galerie</h6>
+                                <p class="text-muted">Laden Sie Fotos Ihrer Praxisräume, des Teams und der Ausstattung hoch.</p>
+                                
+                                <div class="mb-4">
+                                    <div id="gallery-photos-list" class="row g-3">
+                                        <!-- Photos will be loaded here -->
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary mt-3" onclick="addGalleryPhoto()">
+                                        <i class="bi bi-plus-circle"></i> Foto hinzufügen
+                                    </button>
+                                </div>
+
+                                <h6 class="text-primary mb-3 mt-4">Video & Virtueller Rundgang</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Video-URL (YouTube/Vimeo)</label>
+                                        <input type="url" class="form-control" id="video_url" 
+                                            placeholder="https://youtube.com/watch?v=...">
+                                        <small class="text-muted">Stellen Sie Ihre Praxis per Video vor</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">360° Virtueller Rundgang</label>
+                                        <input type="url" class="form-control" id="virtual_tour_url"
+                                            placeholder="https://...">
+                                        <small class="text-muted">Link zu einer 360° Tour</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TAB 3: Leistungen -->
+                            <div class="tab-pane fade" id="services" role="tabpanel">
+                                <h6 class="text-primary mb-3">Ihre Leistungen</h6>
+                                <p class="text-muted">Fügen Sie die Behandlungen und Services hinzu, die Sie anbieten.</p>
+                                
+                                <div id="services-list" class="mb-3">
+                                    <!-- Services will be loaded here -->
+                                </div>
+                                <button type="button" class="btn btn-outline-primary" onclick="addService()">
+                                    <i class="bi bi-plus-circle"></i> Leistung hinzufügen
+                                </button>
+                            </div>
+
+                            <!-- TAB 4: Ausstattung -->
+                            <div class="tab-pane fade" id="equipment" role="tabpanel">
+                                <h6 class="text-primary mb-3">Medizinische Ausstattung & Technologien</h6>
+                                <p class="text-muted">Informieren Sie Patienten über moderne Geräte und Technologien in Ihrer Praxis.</p>
+                                
+                                <div id="equipment-list" class="mb-3">
+                                    <!-- Equipment will be loaded here -->
+                                </div>
+                                <button type="button" class="btn btn-outline-primary" onclick="addEquipment()">
+                                    <i class="bi bi-plus-circle"></i> Ausstattung hinzufügen
+                                </button>
+                            </div>
+
+                            <!-- TAB 5: Versicherungen -->
+                            <div class="tab-pane fade" id="insurance" role="tabpanel">
+                                <h6 class="text-primary mb-3">Akzeptierte Versicherungen</h6>
+                                <p class="text-muted">Geben Sie an, welche Krankenversicherungen Sie akzeptieren.</p>
+                                
+                                <div id="insurance-list" class="mb-3">
+                                    <!-- Insurances will be loaded here -->
+                                </div>
+                                <button type="button" class="btn btn-outline-primary" onclick="addInsurance()">
+                                    <i class="bi bi-plus-circle"></i> Versicherung hinzufügen
+                                </button>
+
+                                <div class="mt-4">
+                                    <h6>Häufige Versicherungen (zum Hinzufügen klicken)</h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-success" onclick="quickAddInsurance('AOK', 'public')">AOK</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success" onclick="quickAddInsurance('TK - Techniker Krankenkasse', 'public')">TK</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success" onclick="quickAddInsurance('Barmer', 'public')">Barmer</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success" onclick="quickAddInsurance('DAK', 'public')">DAK</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="quickAddInsurance('Private Krankenversicherung', 'private')">PKV</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="quickAddInsurance('Debeka', 'private')">Debeka</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="quickAddInsurance('Allianz', 'private')">Allianz</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TAB 6: Besonderheiten -->
+                            <div class="tab-pane fade" id="features" role="tabpanel">
+                                <h6 class="text-primary mb-3">Besondere Merkmale Ihrer Praxis</h6>
+                                <p class="text-muted">Markieren Sie alle zutreffenden Optionen.</p>
+                                
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input feature-checkbox" type="checkbox" value="wheelchair_accessible" id="feat_wheelchair">
+                                            <label class="form-check-label" for="feat_wheelchair">
+                                                <i class="bi bi-universal-access"></i> Barrierefrei
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input feature-checkbox" type="checkbox" value="parking" id="feat_parking">
+                                            <label class="form-check-label" for="feat_parking">
+                                                <i class="bi bi-p-circle"></i> Parkplatz vorhanden
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input feature-checkbox" type="checkbox" value="wifi" id="feat_wifi">
+                                            <label class="form-check-label" for="feat_wifi">
+                                                <i class="bi bi-wifi"></i> WLAN verfügbar
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input feature-checkbox" type="checkbox" value="online_booking" id="feat_online">
+                                            <label class="form-check-label" for="feat_online">
+                                                <i class="bi bi-calendar-check"></i> Online-Buchung
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input feature-checkbox" type="checkbox" value="video_consultation" id="feat_video">
+                                            <label class="form-check-label" for="feat_video">
+                                                <i class="bi bi-camera-video"></i> Video-Sprechstunde
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input feature-checkbox" type="checkbox" value="emergency_appointments" id="feat_emergency">
+                                            <label class="form-check-label" for="feat_emergency">
+                                                <i class="bi bi-lightning"></i> Notfall-Termine
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TAB 7: FAQ -->
+                            <div class="tab-pane fade" id="faq" role="tabpanel">
+                                <h6 class="text-primary mb-3">Häufig gestellte Fragen (FAQ)</h6>
+                                <p class="text-muted">Beantworten Sie häufige Fragen Ihrer Patienten.</p>
+                                
+                                <div id="faq-list" class="mb-3">
+                                    <!-- FAQs will be loaded here -->
+                                </div>
+                                <button type="button" class="btn btn-outline-primary" onclick="addFAQ()">
+                                    <i class="bi bi-plus-circle"></i> FAQ hinzufügen
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-save"></i> Alle Änderungen speichern
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="loadExtendedProfile()">
+                                    <i class="bi bi-arrow-clockwise"></i> Zurücksetzen
+                                </button>
+                                <a href="/doctor/practice-profile" class="btn btn-outline-info">
+                                    <i class="bi bi-arrow-left"></i> Zur einfachen Ansicht
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Templates for dynamic content -->
+<template id="gallery-photo-template">
+    <div class="col-md-3 gallery-photo-item">
+        <div class="card">
+            <div class="card-body">
+                <input type="text" class="form-control form-control-sm mb-2 photo-url" placeholder="Foto-URL">
+                <input type="text" class="form-control form-control-sm mb-2 photo-title" placeholder="Titel">
+                <button type="button" class="btn btn-sm btn-danger w-100" onclick="removeGalleryPhoto(this)">
+                    <i class="bi bi-trash"></i> Entfernen
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="service-template">
+    <div class="card mb-2 service-item">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <input type="text" class="form-control form-control-sm service-name" placeholder="Leistungsname">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" class="form-control form-control-sm service-description" placeholder="Beschreibung">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-sm btn-danger w-100" onclick="removeService(this)">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="equipment-template">
+    <div class="card mb-2 equipment-item">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-5">
+                    <input type="text" class="form-control form-control-sm equipment-name" placeholder="Gerät/Technologie">
+                </div>
+                <div class="col-md-5">
+                    <input type="text" class="form-control form-control-sm equipment-description" placeholder="Beschreibung">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-sm btn-danger w-100" onclick="removeEquipment(this)">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="insurance-template">
+    <div class="card mb-2 insurance-item">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-5">
+                    <input type="text" class="form-control form-control-sm insurance-name" placeholder="Versicherungsname">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select form-select-sm insurance-type">
+                        <option value="public">Gesetzlich</option>
+                        <option value="private">Privat</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control form-control-sm insurance-logo" placeholder="Logo URL">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-sm btn-danger w-100" onclick="removeInsurance(this)">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="faq-template">
+    <div class="card mb-2 faq-item">
+        <div class="card-body">
+            <input type="text" class="form-control form-control-sm mb-2 faq-question" placeholder="Frage">
+            <textarea class="form-control form-control-sm mb-2 faq-answer" rows="2" placeholder="Antwort"></textarea>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeFAQ(this)">
+                <i class="bi bi-trash"></i> Entfernen
+            </button>
+        </div>
+    </div>
+</template>
+
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script src="/static/js/extended_practice_profile.js"></script>
+{% endblock %}

@@ -50,6 +50,36 @@ class Doctor(db.Model):
     photo_url = db.Column(db.String(500), nullable=True)
     bio = db.Column(db.Text, nullable=True)
     
+    # === NEW: Extended profile fields ===
+    # Professional information
+    title = db.Column(db.String(50), nullable=True)  # Dr. med., Prof. Dr., Dipl.-Med.
+    qualifications = db.Column(db.Text, nullable=True)  # JSON: [{degree, institution, year, country}, ...]
+    
+    # Career and experience
+    experience_years = db.Column(db.Integer, nullable=True)  # Years of practice
+    previous_positions = db.Column(db.Text, nullable=True)  # JSON: [{title, institution, location, period_from, period_to}, ...]
+    
+    # Specializations and focus
+    treatment_focus = db.Column(db.Text, nullable=True)  # JSON: [{area, description, icon}, ...]
+    subspecialities = db.Column(db.Text, nullable=True)  # JSON: [subspeciality codes]
+    
+    # Professional memberships
+    professional_memberships = db.Column(db.Text, nullable=True)  # JSON: [{organization, role, since_year}, ...]
+    
+    # Publications and research
+    publications = db.Column(db.Text, nullable=True)  # JSON: [{title, journal, year, link}, ...]
+    
+    # Consultation types availability
+    consultation_types = db.Column(db.Text, nullable=True)  # JSON: ['in_person', 'video', 'phone', 'chat']
+    video_consultation_url = db.Column(db.String(500), nullable=True)  # Video consultation link
+    
+    # Personal info for profile page
+    hobbies = db.Column(db.Text, nullable=True)  # Hobbies/interests
+    motto = db.Column(db.String(500), nullable=True)  # Professional motto
+    
+    # Contact preferences
+    preferred_contact_method = db.Column(db.String(20), nullable=True)  # email/phone/whatsapp
+    
     # Настройки расписания
     slot_duration_minutes = db.Column(db.Integer, default=30, nullable=False)  # Длительность одного термина в минутах
     work_days = db.Column(db.Text, nullable=False, default='["monday","tuesday","wednesday","thursday","friday"]')  # Рабочие дни недели
@@ -93,6 +123,146 @@ class Doctor(db.Model):
             self.work_days = json.dumps(value)
         else:
             self.work_days = value
+    
+    # === NEW: Helper methods for JSON fields ===
+    
+    @property
+    def qualifications_list(self):
+        """Get qualifications as list"""
+        if self.qualifications and isinstance(self.qualifications, str):
+            try:
+                return json.loads(self.qualifications)
+            except:
+                return []
+        return self.qualifications or []
+    
+    @qualifications_list.setter
+    def qualifications_list(self, value):
+        if isinstance(value, list):
+            self.qualifications = json.dumps(value)
+    
+    @property
+    def previous_positions_list(self):
+        """Get previous positions as list"""
+        if self.previous_positions and isinstance(self.previous_positions, str):
+            try:
+                return json.loads(self.previous_positions)
+            except:
+                return []
+        return self.previous_positions or []
+    
+    @previous_positions_list.setter
+    def previous_positions_list(self, value):
+        if isinstance(value, list):
+            self.previous_positions = json.dumps(value)
+    
+    @property
+    def treatment_focus_list(self):
+        """Get treatment focus as list"""
+        if self.treatment_focus and isinstance(self.treatment_focus, str):
+            try:
+                return json.loads(self.treatment_focus)
+            except:
+                return []
+        return self.treatment_focus or []
+    
+    @treatment_focus_list.setter
+    def treatment_focus_list(self, value):
+        if isinstance(value, list):
+            self.treatment_focus = json.dumps(value)
+    
+    @property
+    def subspecialities_list(self):
+        """Get subspecialities as list"""
+        if self.subspecialities and isinstance(self.subspecialities, str):
+            try:
+                return json.loads(self.subspecialities)
+            except:
+                return []
+        return self.subspecialities or []
+    
+    @subspecialities_list.setter
+    def subspecialities_list(self, value):
+        if isinstance(value, list):
+            self.subspecialities = json.dumps(value)
+    
+    @property
+    def professional_memberships_list(self):
+        """Get professional memberships as list"""
+        if self.professional_memberships and isinstance(self.professional_memberships, str):
+            try:
+                return json.loads(self.professional_memberships)
+            except:
+                return []
+        return self.professional_memberships or []
+    
+    @professional_memberships_list.setter
+    def professional_memberships_list(self, value):
+        if isinstance(value, list):
+            self.professional_memberships = json.dumps(value)
+    
+    @property
+    def publications_list(self):
+        """Get publications as list"""
+        if self.publications and isinstance(self.publications, str):
+            try:
+                return json.loads(self.publications)
+            except:
+                return []
+        return self.publications or []
+    
+    @publications_list.setter
+    def publications_list(self, value):
+        if isinstance(value, list):
+            self.publications = json.dumps(value)
+    
+    @property
+    def consultation_types_list(self):
+        """Get consultation types as list"""
+        if self.consultation_types and isinstance(self.consultation_types, str):
+            try:
+                return json.loads(self.consultation_types)
+            except:
+                return []
+        return self.consultation_types or []
+    
+    @consultation_types_list.setter
+    def consultation_types_list(self, value):
+        if isinstance(value, list):
+            self.consultation_types = json.dumps(value)
+    
+    def get_profile_completeness(self):
+        """Calculate profile completeness percentage"""
+        score = 0
+        max_score = 10
+        
+        if self.photo_url:
+            score += 2  # Professional photo is important
+        if self.bio and len(self.bio) > 100:
+            score += 1
+        if self.qualifications_list:
+            score += 1
+        if self.experience_years:
+            score += 1
+        if self.treatment_focus_list:
+            score += 1
+        if self.professional_memberships_list:
+            score += 1
+        if self.languages_list and len(self.languages_list) >= 2:
+            score += 1
+        if self.title:
+            score += 1
+        if self.motto:
+            score += 1
+        
+        return int((score / max_score) * 100)
+    
+    @property
+    def full_name_with_title(self):
+        """Full name with professional title"""
+        if self.title:
+            return f"{self.title} {self.first_name} {self.last_name}".strip()
+        return self.name
     
     @property
     def name(self):

@@ -106,6 +106,27 @@ def get_available_doctors():
             except:
                 address_json = {}
             
+            # Parse gallery photos for mini-gallery
+            gallery_photos = []
+            try:
+                gallery_photos = json.loads(practice.gallery_photos) if practice.gallery_photos else []
+            except:
+                gallery_photos = []
+            
+            # Parse features
+            features = []
+            try:
+                features = json.loads(practice.features) if practice.features else []
+            except:
+                features = []
+            
+            # Parse accepted insurances
+            insurances = []
+            try:
+                insurances = json.loads(practice.accepted_insurances) if practice.accepted_insurances else []
+            except:
+                insurances = []
+            
             practice_data = {
                 'id': str(practice.id),
                 'name': practice.name,
@@ -114,16 +135,31 @@ def get_available_doctors():
                 'website': practice.website,
                 'google_business_url': practice.google_business_url,
                 'phone': practice.phone,
-                'description': practice.description
+                'description': practice.description,
+                'rating_avg': round(practice.rating_avg, 1) if practice.rating_avg else 0,
+                'rating_count': practice.rating_count or 0,
+                'gallery_photos': gallery_photos[:3],  # First 3 photos for mini-gallery
+                'features': features,
+                'accepted_insurances': insurances[:5],  # First 5 insurances
+                'slug': practice.slug
             }
+        
+        # Get doctor's full name with title
+        doctor_full_name = doctor.full_name_with_title if hasattr(doctor, 'full_name_with_title') else f"{doctor.first_name} {doctor.last_name}"
         
         doctors_list.append({
             'id': str(doctor.id),
             'first_name': doctor.first_name,
             'last_name': doctor.last_name,
             'full_name': f"{doctor.first_name} {doctor.last_name}",
+            'full_name_with_title': doctor_full_name,
+            'title': doctor.title,
             'speciality': doctor.speciality,
             'speciality_display': speciality_display,
+            'photo_url': doctor.photo_url,
+            'bio': doctor.bio[:150] + '...' if doctor.bio and len(doctor.bio) > 150 else doctor.bio,
+            'experience_years': doctor.experience_years,
+            'languages': json.loads(doctor.languages) if isinstance(doctor.languages, str) else doctor.languages,
             'practice': practice_data,
             'free_slots_count': int(free_slots),
             'has_available_slots': int(free_slots) > 0

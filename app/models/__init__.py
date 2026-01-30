@@ -9,6 +9,7 @@ from app.models.calendar_integration import CalendarIntegration
 from app.models.patient import Patient
 from app.models.patient_alert import PatientAlert
 from app.models.booking import Booking
+from app.models.practice_review import PracticeReview
 
 __all__ = [
     'Practice',
@@ -19,4 +20,5 @@ __all__ = [
     'Patient',
     'PatientAlert',
     'Booking',
+    'PracticeReview',
 ]

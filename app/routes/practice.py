@@ -54,12 +54,33 @@ def api_get_practice_profile():
         'description': practice.description,
         'opening_hours': practice.opening_hours_dict,
         'social_media': practice.social_media_dict,
-        'photos': practice.photos_list,
+        'photos': practice.photos if practice.photos else None,
         'verified': practice.verified,
         'stats': {
             'total_appointments': practice.total_appointments,
             'average_rating': round(practice.average_rating, 2) if practice.average_rating else 0
-        }
+        },
+        # Extended fields
+        'gallery_photos': practice.gallery_photos_list,
+        'video_url': practice.video_url,
+        'virtual_tour_url': practice.virtual_tour_url,
+        'services': practice.services_list,
+        'team_members': practice.team_members_list,
+        'equipment': practice.equipment_list,
+        'accepted_insurances': practice.accepted_insurances_list,
+        'features': practice.features_list,
+        'certifications': practice.certifications_list,
+        'faq': practice.faq_list,
+        'rating_avg': practice.rating_avg,
+        'rating_count': practice.rating_count,
+        'parking_info': practice.parking_info,
+        'public_transport': practice.public_transport_list,
+        'emergency_phone': practice.emergency_phone,
+        'whatsapp_number': practice.whatsapp_number,
+        'telegram_username': practice.telegram_username,
+        'meta_title': practice.meta_title,
+        'meta_description': practice.meta_description,
+        'slug': practice.slug
     })
 
 
@@ -121,3 +142,113 @@ def api_update_practice_profile():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+@practice_api.route('/profile/extended', methods=['PUT'])
+@jwt_required()
+def api_update_extended_practice_profile():
+    """API: Обновить расширенный профиль практики"""
+    identity = get_current_user()
+    data = request.get_json()
+    
+    # Проверяем, что это врач
+    if identity.get('type') != 'doctor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Получаем доктора и проверяем права
+    import uuid
+    doctor = Doctor.query.get(uuid.UUID(identity['id']))
+    if not doctor or not doctor.practice_id:
+        return jsonify({'error': 'Practice not found'}), 404
+    
+    practice = Practice.query.get(doctor.practice_id)
+    if not practice:
+        return jsonify({'error': 'Practice not found'}), 404
+    
+    # Update basic fields
+    if 'phone' in data:
+        practice.phone = data['phone']
+    if 'emergency_phone' in data:
+        practice.emergency_phone = data['emergency_phone']
+    if 'whatsapp_number' in data:
+        practice.whatsapp_number = data['whatsapp_number']
+    if 'telegram_username' in data:
+        practice.telegram_username = data['telegram_username']
+    if 'website' in data:
+        practice.website = data['website']
+    if 'slug' in data:
+        # Validate slug format
+        slug = data['slug'].lower().strip()
+        if slug and all(c.isalnum() or c == '-' for c in slug):
+            practice.slug = slug
+    if 'description' in data:
+        practice.description = data['description']
+    if 'parking_info' in data:
+        practice.parking_info = data['parking_info']
+    
+    # Social media
+    if 'social_media' in data:
+        practice.social_media_dict = data['social_media']
+    
+    # Media
+    if 'video_url' in data:
+        practice.video_url = data['video_url']
+    if 'virtual_tour_url' in data:
+        practice.virtual_tour_url = data['virtual_tour_url']
+    if 'gallery_photos' in data:
+        practice.gallery_photos_list = data['gallery_photos']
+    
+    # Services
+    if 'services' in data:
+        practice.services_list = data['services']
+    
+    # Equipment
+    if 'equipment' in data:
+        practice.equipment_list = data['equipment']
+    
+    # Insurances
+    if 'accepted_insurances' in data:
+        practice.accepted_insurances_list = data['accepted_insurances']
+    
+    # Features
+    if 'features' in data:
+        practice.features_list = data['features']
+    
+    # FAQ
+    if 'faq' in data:
+        practice.faq_list = data['faq']
+    
+    # Public transport
+    if 'public_transport' in data:
+        practice.public_transport_list = data['public_transport']
+    
+    # SEO fields
+    if 'meta_title' in data:
+        practice.meta_title = data['meta_title']
+    if 'meta_description' in data:
+        practice.meta_description = data['meta_description']
+    
+    try:
+        db.session.commit()
+        
+        # Calculate completeness
+        completeness = practice.get_profile_completeness()
+        
+        return jsonify({
+            'message': 'Extended practice profile updated successfully',
+            'completeness': completeness,
+            'practice': {
+                'id': str(practice.id),
+                'name': practice.name,
+                'slug': practice.slug
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@bp.route('/profile/extended')
+def practice_profile_extended():
+    """Страница расширенного профиля практики"""
+    return render_template('doctor/practice_profile_extended.html')
