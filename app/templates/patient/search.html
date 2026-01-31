@@ -204,7 +204,7 @@
     margin-top: 1rem;
 }
 
-.info-btn {
+.info-btn-full {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -220,40 +220,45 @@
     text-align: left;
 }
 
-.info-btn:hover {
+.info-btn-full:hover {
     background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
     border-color: #0d6efd;
     box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
     transform: translateY(-2px);
 }
 
-.info-btn i:first-child {
+.info-btn-full i:first-child {
     font-size: 1.2rem;
     color: #0d6efd;
 }
 
-.info-btn .toggle-chevron {
+.info-btn-full .toggle-chevron {
     font-size: 0.9rem;
     transition: transform 0.3s;
     color: #6c757d;
 }
 
-.info-btn:hover .toggle-chevron {
-    transform: rotate(180deg);
-}
-
-.info-btn .badge {
+.info-btn-full .badge {
     font-size: 0.7rem;
 }
 
-.info-btn.btn-slots-available {
+.info-btn-full.btn-slots-available {
     background: linear-gradient(135deg, #d1f4e0 0%, #a8e6cf 100%);
     border-color: #198754;
 }
 
-.info-btn.btn-slots-available:hover {
+.info-btn-full.btn-slots-available:hover {
     background: linear-gradient(135deg, #a8e6cf 0%, #7fd3ae 100%);
     box-shadow: 0 4px 12px rgba(25, 135, 84, 0.25);
+}
+
+.info-btn-full.btn-slots-none {
+    background: linear-gradient(135deg, #f1f3f5 0%, #e9ecef 100%);
+    border-color: #ced4da;
+}
+
+.info-btn-full.btn-slots-none:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
 }
 
 .info-content {
@@ -957,278 +962,180 @@ async function displayDoctors(doctors) {
             practice: practice
         };
         
-        // Rating display
-        const ratingAvg = practice.rating_avg || 0;
-        const ratingCount = practice.rating_count || 0;
-        const ratingStars = generateStarRating(ratingAvg);
-        
-        // Features icons
+        // Features & Insurance
         const features = practice.features || [];
-        const featuresHtml = generateFeaturesIcons(features);
-        
-        // Insurance badges
         const insurances = practice.accepted_insurances || [];
-        const insurancesHtml = generateInsuranceBadges(insurances);
-        
-        // Doctor photo or placeholder
-        const doctorPhoto = doctor.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(doctor.full_name)}&size=200&background=0D6EFD&color=fff&bold=true`;
-        
-        // Practice gallery mini-gallery
-        const galleryPhotos = practice.gallery_photos || [];
-        const galleryHtml = generateMiniGallery(galleryPhotos);
         
         html += `
             <div class="col-md-6 col-lg-4 mb-4" id="doctor-card-${doctor.id}">
                 <div class="card h-100 shadow-sm hover-shadow">
-                    <!-- Doctor Photo -->
-                    <div class="position-relative">
-                        <img src="${doctorPhoto}" class="card-img-top doctor-photo-clickable" alt="${doctor.full_name}" 
-                             style="height: 200px; object-fit: cover; cursor: pointer;"
-                             onclick="showDoctorPhotoModal('${doctorPhoto}', '${doctor.full_name}')">
-                        ${doctor.title ? `<span class="badge bg-primary position-absolute top-0 start-0 m-2">${doctor.title}</span>` : ''}
-                        ${doctor.experience_years ? `
-                        <span class="badge bg-info position-absolute top-0 end-0 m-2 clickable-badge" 
-                              data-bs-toggle="tooltip" data-bs-placement="left" 
-                              title="Seit ${doctor.experience_years} Jahren in der Praxis tätig">
-                            <i class="bi bi-award"></i> ${doctor.experience_years} Jahre
-                        </span>` : ''}
-                        ${ratingCount > 0 ? `
-                        <span class="badge bg-warning position-absolute bottom-0 end-0 m-2 clickable-badge"
-                              onclick="showRatingsInfo('${doctor.id}', '${practiceName}', ${ratingAvg}, ${ratingCount})">
-                            <i class="bi bi-star-fill"></i> ${ratingAvg.toFixed(1)}
-                        </span>` : ''}
-                    </div>
-                    
                     <div class="card-body p-3">
                         <!-- Doctor Name & Speciality -->
-                        <h6 class="card-title mb-1">
-                            <i class="bi bi-person-circle text-primary"></i>
+                        <h5 class="card-title mb-2">
                             ${doctor.full_name_with_title || doctor.full_name}
-                        </h6>
-                        <p class="text-primary mb-2 small fw-bold">${doctor.speciality_display}</p>
+                        </h5>
+                        <p class="text-primary mb-2 fw-bold">
+                            <i class="bi bi-person-circle"></i> ${doctor.speciality_display}
+                        </p>
                         
-                        <!-- Languages with clickable icon -->
-                        ${doctor.languages && doctor.languages.length > 0 ? `
-                        <div class="mb-2">
-                            <span class="badge bg-light text-dark clickable-icon" 
-                                  data-bs-toggle="tooltip" 
-                                  title="Spricht: ${doctor.languages.map(function(l) { return l.toUpperCase(); }).join(', ')}">
-                                <i class="bi bi-translate"></i> ${doctor.languages.length} Sprache${doctor.languages.length > 1 ? 'n' : ''}
-                            </span>
-                        </div>
-                        ` : ''}
-                        
-                        <!-- Practice Info with clickable icon -->
+                        <!-- Practice Name -->
                         ${practiceName ? `
-                        <div class="mb-2">
-                            <small class="text-muted clickable-text" onclick="togglePracticeDetails('${doctor.id}')">
-                                <i class="bi bi-hospital"></i> ${practiceName}
-                                <i class="bi bi-chevron-down toggle-icon" id="toggle-practice-${doctor.id}"></i>
-                            </small>
-                        </div>
+                        <p class="text-muted mb-2">
+                            <i class="bi bi-hospital"></i> ${practiceName}
+                        </p>
                         ` : ''}
                         
-                        <!-- Collapsible Practice Details -->
-                        <div id="practice-details-${doctor.id}" class="collapse">
-                            <div class="card card-body bg-light mb-2 p-2">
-                                ${practiceCity ? `
-                                <small class="mb-1">
-                                    <i class="bi bi-geo-alt text-primary"></i> 
-                                    <a href="https://maps.google.com/?q=${encodeURIComponent(practiceName + ' ' + practiceCity)}" 
-                                       target="_blank" class="text-decoration-none">
-                                        ${practiceCity}
-                                    </a>
-                                </small>` : ''}
-                                
-                                ${phone ? `
-                                <small class="mb-1">
-                                    <i class="bi bi-telephone text-success"></i> 
-                                    <a href="tel:${phone}" class="text-decoration-none">${phone}</a>
-                                </small>` : ''}
-                                
-                                ${practice.emergency_phone ? `
-                                <small class="mb-1">
-                                    <i class="bi bi-exclamation-triangle text-danger"></i> 
-                                    Notfall: <a href="tel:${practice.emergency_phone}" class="text-decoration-none">${practice.emergency_phone}</a>
-                                </small>` : ''}
-                                
-                                ${practice.whatsapp_number ? `
-                                <small class="mb-1">
-                                    <i class="bi bi-whatsapp text-success"></i> 
-                                    <a href="https://wa.me/${practice.whatsapp_number.replace(/[^0-9]/g, '')}" 
-                                       target="_blank" class="text-decoration-none">WhatsApp</a>
-                                </small>` : ''}
-                                
-                                ${website || googleBusiness ? `
-                                <div class="d-flex gap-1 mt-1">
-                                    ${website ? `<a href="${website}" target="_blank" class="btn btn-xs btn-outline-primary btn-sm" title="Website"><i class="bi bi-globe"></i></a>` : ''}
-                                    ${googleBusiness ? `<a href="${googleBusiness}" target="_blank" class="btn btn-xs btn-outline-info btn-sm" title="Google"><i class="bi bi-google"></i></a>` : ''}
-                                </div>` : ''}
-                            </div>
-                        </div>
+                        <!-- Languages -->
+                        ${doctor.languages && doctor.languages.length > 0 ? `
+                        <p class="mb-3">
+                            <span class="badge bg-light text-dark border">
+                                <i class="bi bi-translate"></i> ${doctor.languages.map(function(l) { return l.toUpperCase(); }).join(', ')}
+                            </span>
+                        </p>
+                        ` : ''}
                         
-                        <!-- Information Sections - 8 Clickable Buttons -->
+                        <!-- Information Sections - 7 Profile Sections + Termine (8 total) -->
                         <div class="info-sections mt-3">
-                            <div class="row g-2">
-                                <!-- 1. Über den Arzt -->
-                                ${doctor.bio || doctor.title || doctor.experience_years ? `
-                                <div class="col-6">
-                                    <button class="info-btn w-100" onclick="toggleInfoSection('${doctor.id}', 'about')">
-                                        <i class="bi bi-person-badge"></i>
-                                        <span>Über den Arzt</span>
-                                        <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-about"></i>
-                                    </button>
-                                    <div id="section-${doctor.id}-about" class="info-content collapse">
-                                        ${doctor.title ? `<p class="mb-1"><strong>Titel:</strong> ${doctor.title}</p>` : ''}
-                                        ${doctor.experience_years ? `<p class="mb-1"><strong>Erfahrung:</strong> ${doctor.experience_years} Jahre</p>` : ''}
-                                        ${doctor.bio ? `<p class="mb-0">${doctor.bio}</p>` : ''}
-                                    </div>
-                                </div>
-                                ` : ''}
-                                
-                                <!-- 2. Medien (Galerie, Video) -->
-                                ${galleryPhotos.length > 0 || practice.video_url ? `
-                                <div class="col-6">
-                                    <button class="info-btn w-100" onclick="toggleInfoSection('${doctor.id}', 'media')">
-                                        <i class="bi bi-images"></i>
-                                        <span>Medien</span>
-                                        <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-media"></i>
-                                    </button>
-                                    <div id="section-${doctor.id}-media" class="info-content collapse">
-                                        ${galleryPhotos.length > 0 ? `
-                                        <p class="mb-2"><strong>Praxisfotos (${galleryPhotos.length}):</strong></p>
-                                        ${generateClickableGallery(galleryPhotos, doctor.id)}
-                                        ` : ''}
-                                        ${practice.video_url ? `
-                                        <p class="mb-1 mt-2"><a href="${practice.video_url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-play-circle"></i> Video ansehen</a></p>
-                                        ` : ''}
-                                        ${practice.virtual_tour_url ? `
-                                        <p class="mb-0"><a href="${practice.virtual_tour_url}" target="_blank" class="btn btn-sm btn-outline-info"><i class="bi bi-camera"></i> Virtuelle Tour</a></p>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                                ` : ''}
-                                
-                                <!-- 3. Leistungen (Services) -->
-                                ${practice.services && practice.services_list.length > 0 ? `
-                                <div class="col-6">
-                                    <button class="info-btn w-100" onclick="toggleInfoSection('${doctor.id}', 'services')">
-                                        <i class="bi bi-briefcase"></i>
-                                        <span>Leistungen</span>
-                                        <span class="badge bg-primary ms-1">${practice.services_list.length}</span>
-                                        <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-services"></i>
-                                    </button>
-                                    <div id="section-${doctor.id}-services" class="info-content collapse">
-                                        <ul class="list-unstyled mb-0">
-                                            ${practice.services_list.map(s => `<li><i class="bi bi-check-circle text-success"></i> ${s}</li>`).join('')}
-                                        </ul>
-                                    </div>
-                                </div>
-                                ` : ''}
-                                
-                                <!-- 4. Ausstattung (Equipment) -->
-                                ${practice.equipment && practice.equipment_list.length > 0 ? `
-                                <div class="col-6">
-                                    <button class="info-btn w-100" onclick="toggleInfoSection('${doctor.id}', 'equipment')">
-                                        <i class="bi bi-gear"></i>
-                                        <span>Ausstattung</span>
-                                        <span class="badge bg-info ms-1">${practice.equipment_list.length}</span>
-                                        <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-equipment"></i>
-                                    </button>
-                                    <div id="section-${doctor.id}-equipment" class="info-content collapse">
-                                        <ul class="list-unstyled mb-0">
-                                            ${practice.equipment_list.map(e => `<li><i class="bi bi-check-circle text-info"></i> ${e}</li>`).join('')}
-                                        </ul>
-                                    </div>
-                                </div>
-                                ` : ''}
-                                
-                                <!-- 5. Versicherungen (Insurance) -->
-                                ${insurances.length > 0 ? `
-                                <div class="col-6">
-                                    <button class="info-btn w-100" onclick="toggleInfoSection('${doctor.id}', 'insurance')">
-                                        <i class="bi bi-shield-check"></i>
-                                        <span>Versicherungen</span>
-                                        <span class="badge bg-success ms-1">${insurances.length}</span>
-                                        <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-insurance"></i>
-                                    </button>
-                                    <div id="section-${doctor.id}-insurance" class="info-content collapse">
-                                        ${insurances.filter(i => i.type === 'public').length > 0 ? `
-                                        <p class="mb-1 fw-bold"><small>Gesetzliche:</small></p>
-                                        <div class="d-flex flex-wrap gap-1 mb-2">
-                                            ${insurances.filter(i => i.type === 'public').map(i => `<span class="badge bg-success">${i.name}</span>`).join('')}
-                                        </div>
-                                        ` : ''}
-                                        ${insurances.filter(i => i.type === 'private').length > 0 ? `
-                                        <p class="mb-1 fw-bold"><small>Private:</small></p>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            ${insurances.filter(i => i.type === 'private').map(i => `<span class="badge bg-primary">${i.name}</span>`).join('')}
-                                        </div>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                                ` : ''}
-                                
-                                <!-- 6. Besonderheiten (Features) -->
-                                ${features.length > 0 ? `
-                                <div class="col-6">
-                                    <button class="info-btn w-100" onclick="toggleInfoSection('${doctor.id}', 'features')">
-                                        <i class="bi bi-stars"></i>
-                                        <span>Besonderheiten</span>
-                                        <span class="badge bg-warning ms-1">${features.length}</span>
-                                        <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-features"></i>
-                                    </button>
-                                    <div id="section-${doctor.id}-features" class="info-content collapse">
-                                        <div class="d-flex flex-wrap gap-1">
-                                            ${generateInteractiveFeatures(features, doctor.id)}
-                                        </div>
-                                    </div>
-                                </div>
-                                ` : ''}
-                                
-                                <!-- 7. FAQ -->
-                                ${practice.faq && practice.faq_list.length > 0 ? `
-                                <div class="col-6">
-                                    <button class="info-btn w-100" onclick="toggleInfoSection('${doctor.id}', 'faq')">
-                                        <i class="bi bi-question-circle"></i>
-                                        <span>FAQ</span>
-                                        <span class="badge bg-secondary ms-1">${practice.faq_list.length}</span>
-                                        <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-faq"></i>
-                                    </button>
-                                    <div id="section-${doctor.id}-faq" class="info-content collapse">
-                                        ${practice.faq_list.map(faq => `
-                                        <div class="mb-2">
-                                            <p class="mb-0 fw-bold"><small>❓ ${faq.question}</small></p>
-                                            <p class="mb-0 text-muted"><small>💡 ${faq.answer}</small></p>
-                                        </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                                ` : ''}
-                                
-                                <!-- 8. Termine anzeigen -->
-                                <div class="col-6">
-                                    <button class="info-btn w-100 ${doctor.free_slots_count > 0 ? 'btn-slots-available' : ''}" 
-                                            onclick="${doctor.free_slots_count > 0 ? `openSearchSlotsModal('${doctor.id}', '${doctor.full_name}')` : `toggleInfoSection('${doctor.id}', 'slots')`}">
-                                        <i class="bi bi-calendar-check"></i>
-                                        <span>Termine</span>
-                                        ${doctor.free_slots_count > 0 ? `<span class="badge bg-success ms-1">${doctor.free_slots_count}</span>` : '<span class="badge bg-secondary ms-1">0</span>'}
-                                        ${doctor.free_slots_count === 0 ? `<i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-slots"></i>` : ''}
-                                    </button>
-                                    ${doctor.free_slots_count === 0 ? `
-                                    <div id="section-${doctor.id}-slots" class="info-content collapse">
-                                        <p class="mb-2">Aktuell keine freien Termine verfügbar.</p>
-                                        ${!alertExists ? `
-                                        <button class="btn btn-sm btn-warning w-100" onclick="createAlert('${doctor.id}', '${doctor.full_name}', '${doctor.speciality}')">
-                                            <i class="bi bi-bell"></i> Benachrichtigung einrichten
-                                        </button>
-                                        ` : `
-                                        <p class="text-success mb-0"><i class="bi bi-bell-fill"></i> Benachrichtigung aktiv</p>
-                                        `}
-                                    </div>
-                                    ` : ''}
+                            <!-- 1. Grundinformationen -->
+                            <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'grundinfo')">
+                                <i class="bi bi-info-circle"></i>
+                                <span>Grundinformationen</span>
+                                <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-grundinfo"></i>
+                            </button>
+                            <div id="section-${doctor.id}-grundinfo" class="info-content collapse mb-2">
+                                ${practiceCity ? `<p class="mb-1"><i class="bi bi-geo-alt text-primary"></i> <strong>Adresse:</strong> ${practiceCity}</p>` : ''}
+                                ${phone ? `<p class="mb-1"><i class="bi bi-telephone text-success"></i> <strong>Telefon:</strong> <a href="tel:${phone}">${phone}</a></p>` : ''}
+                                ${practice.emergency_phone ? `<p class="mb-1"><i class="bi bi-exclamation-triangle text-danger"></i> <strong>Notfall:</strong> <a href="tel:${practice.emergency_phone}">${practice.emergency_phone}</a></p>` : ''}
+                                ${practice.whatsapp_number ? `<p class="mb-1"><i class="bi bi-whatsapp text-success"></i> <strong>WhatsApp:</strong> <a href="https://wa.me/${practice.whatsapp_number.replace(/[^0-9]/g, '')}" target="_blank">Nachricht senden</a></p>` : ''}
+                                ${practice.opening_hours ? `<p class="mb-0"><i class="bi bi-clock text-info"></i> <strong>Öffnungszeiten:</strong> ${practice.opening_hours}</p>` : ''}
+                            </div>
+
+                            <!-- 2. Medien (Social Media & Links) -->
+                            ${website || googleBusiness || practice.video_url || practice.virtual_tour_url ? `
+                            <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'media')">
+                                <i class="bi bi-link-45deg"></i>
+                                <span>Medien & Links</span>
+                                <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-media"></i>
+                            </button>
+                            <div id="section-${doctor.id}-media" class="info-content collapse mb-2">
+                                <div class="d-flex flex-wrap gap-2">
+                                    ${website ? `<a href="${website}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="bi bi-globe"></i> Website</a>` : ''}
+                                    ${googleBusiness ? `<a href="${googleBusiness}" target="_blank" class="btn btn-outline-danger btn-sm"><i class="bi bi-google"></i> Google Business</a>` : ''}
+                                    ${practice.video_url ? `<a href="${practice.video_url}" target="_blank" class="btn btn-outline-success btn-sm"><i class="bi bi-play-circle"></i> Video</a>` : ''}
+                                    ${practice.virtual_tour_url ? `<a href="${practice.virtual_tour_url}" target="_blank" class="btn btn-outline-info btn-sm"><i class="bi bi-camera"></i> Virtuelle Tour</a>` : ''}
                                 </div>
                             </div>
+                            ` : ''}
+
+                            <!-- 3. Leistungen -->
+                            ${practice.services && practice.services_list.length > 0 ? `
+                            <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'services')">
+                                <i class="bi bi-briefcase"></i>
+                                <span>Leistungen</span>
+                                <span class="badge bg-primary ms-1">${practice.services_list.length}</span>
+                                <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-services"></i>
+                            </button>
+                            <div id="section-${doctor.id}-services" class="info-content collapse mb-2">
+                                <ul class="list-unstyled mb-0">
+                                    ${practice.services_list.map(s => `<li><i class="bi bi-check-circle text-success"></i> ${s}</li>`).join('')}
+                                </ul>
+                            </div>
+                            ` : ''}
+
+                            <!-- 4. Ausstattung -->
+                            ${practice.equipment && practice.equipment_list.length > 0 ? `
+                            <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'equipment')">
+                                <i class="bi bi-gear"></i>
+                                <span>Ausstattung</span>
+                                <span class="badge bg-info ms-1">${practice.equipment_list.length}</span>
+                                <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-equipment"></i>
+                            </button>
+                            <div id="section-${doctor.id}-equipment" class="info-content collapse mb-2">
+                                <ul class="list-unstyled mb-0">
+                                    ${practice.equipment_list.map(e => `<li><i class="bi bi-check-circle text-info"></i> ${e}</li>`).join('')}
+                                </ul>
+                            </div>
+                            ` : ''}
+
+                            <!-- 5. Versicherungen -->
+                            ${insurances.length > 0 ? `
+                            <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'insurance')">
+                                <i class="bi bi-shield-check"></i>
+                                <span>Versicherungen</span>
+                                <span class="badge bg-success ms-1">${insurances.length}</span>
+                                <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-insurance"></i>
+                            </button>
+                            <div id="section-${doctor.id}-insurance" class="info-content collapse mb-2">
+                                ${insurances.filter(i => i.type === 'public').length > 0 ? `
+                                <p class="mb-1 fw-bold"><small>Gesetzliche:</small></p>
+                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                    ${insurances.filter(i => i.type === 'public').map(i => `<span class="badge bg-success">${i.name}</span>`).join('')}
+                                </div>
+                                ` : ''}
+                                ${insurances.filter(i => i.type === 'private').length > 0 ? `
+                                <p class="mb-1 fw-bold"><small>Private:</small></p>
+                                <div class="d-flex flex-wrap gap-1">
+                                    ${insurances.filter(i => i.type === 'private').map(i => `<span class="badge bg-primary">${i.name}</span>`).join('')}
+                                </div>
+                                ` : ''}
+                            </div>
+                            ` : ''}
+
+                            <!-- 6. Besonderheiten -->
+                            ${features.length > 0 ? `
+                            <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'features')">
+                                <i class="bi bi-stars"></i>
+                                <span>Besonderheiten</span>
+                                <span class="badge bg-warning text-dark ms-1">${features.length}</span>
+                                <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-features"></i>
+                            </button>
+                            <div id="section-${doctor.id}-features" class="info-content collapse mb-2">
+                                <div class="d-flex flex-wrap gap-1">
+                                    ${features.map(f => `<span class="badge bg-light text-dark border"><i class="bi bi-check-circle text-success"></i> ${f}</span>`).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            <!-- 7. FAQ -->
+                            ${practice.faq && practice.faq_list.length > 0 ? `
+                            <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'faq')">
+                                <i class="bi bi-question-circle"></i>
+                                <span>FAQ</span>
+                                <span class="badge bg-secondary ms-1">${practice.faq_list.length}</span>
+                                <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-faq"></i>
+                            </button>
+                            <div id="section-${doctor.id}-faq" class="info-content collapse mb-2">
+                                ${practice.faq_list.map(faq => `
+                                <div class="mb-2 pb-2 border-bottom">
+                                    <p class="mb-1 fw-bold"><small><i class="bi bi-question-circle text-primary"></i> ${faq.question}</small></p>
+                                    <p class="mb-0 text-muted"><small><i class="bi bi-arrow-return-right"></i> ${faq.answer}</small></p>
+                                </div>
+                                `).join('')}
+                            </div>
+                            ` : ''}
+
+                            <!-- 8. Termine -->
+                            <button class="info-btn-full w-100 ${doctor.free_slots_count > 0 ? 'btn-slots-available' : 'btn-slots-none'}" 
+                                    onclick="${doctor.free_slots_count > 0 ? `openSearchSlotsModal('${doctor.id}', '${doctor.full_name}')` : `toggleInfoSection('${doctor.id}', 'slots')`}">
+                                <i class="bi bi-calendar-check"></i>
+                                <span>Termine</span>
+                                ${doctor.free_slots_count > 0 ? 
+                                    `<span class="badge bg-success ms-1">${doctor.free_slots_count} verfügbar</span>` : 
+                                    '<span class="badge bg-secondary ms-1">Keine verfügbar</span>'}
+                                ${doctor.free_slots_count === 0 ? `<i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-slots"></i>` : ''}
+                            </button>
+                            ${doctor.free_slots_count === 0 ? `
+                            <div id="section-${doctor.id}-slots" class="info-content collapse">
+                                <p class="mb-2 text-muted"><small>Aktuell keine freien Termine verfügbar.</small></p>
+                                ${!alertExists ? `
+                                <button class="btn btn-sm btn-warning w-100" onclick="createAlert('${doctor.id}', '${doctor.full_name}', '${doctor.speciality}')">
+                                    <i class="bi bi-bell"></i> Benachrichtigung einrichten
+                                </button>
+                                ` : `
+                                <p class="text-success mb-0"><i class="bi bi-bell-fill"></i> Benachrichtigung ist aktiv</p>
+                                `}
+                            </div>
+                            ` : ''}
                         </div>
                     </div>
                 </div>
