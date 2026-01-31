@@ -24,10 +24,10 @@
                 <h2>Über TerminFinder</h2>
                 <p>TerminFinder revolutioniert die Terminbuchung bei Ärzten in Deutschland. Unser KI-Assistent hilft Patienten, schnell freie Termine zu finden und zu buchen, während Ärzte ihre Zeit effizient verwalten können.</p>
                 <ul class="list-unstyled">
-                    <li>✅ Automatische Benachrichtigungen über freie Termine</li>
-                    <li>✅ Sichere Zahlungen mit Stripe</li>
-                    <li>✅ Schutz vor No-Show durch Kaution</li>
-                    <li>✅ Einfache Verwaltung für Ärzte</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Automatische Benachrichtigungen über freie Termine</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Sichere Zahlungen mit Stripe</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Schutz vor No-Show durch Kaution</li>
+                    <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Einfache Verwaltung für Ärzte</li>
                 </ul>
             </div>
             <div class="col-lg-6">
@@ -41,26 +41,32 @@
     <div class="container">
         <h2 class="text-center mb-5">Wie es funktioniert</h2>
         <div class="row">
-            <div class="col-md-4 text-center">
-                <div class="mb-3">
-                    <span class="badge bg-primary fs-1">1</span>
+            <div class="col-md-4 text-center mb-4">
+                <div class="mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle" style="width: 80px; height: 80px;">
+                        <i class="bi bi-person-plus-fill" style="font-size: 2rem;"></i>
+                    </div>
                 </div>
-                <h4>Registrieren</h4>
-                <p>Wählen Sie Ihren Benutzertyp: Arzt oder Patient</p>
+                <h4 class="mb-3">Registrieren</h4>
+                <p class="text-muted">Wählen Sie Ihren Benutzertyp: Arzt oder Patient</p>
             </div>
-            <div class="col-md-4 text-center">
-                <div class="mb-3">
-                    <span class="badge bg-primary fs-1">2</span>
+            <div class="col-md-4 text-center mb-4">
+                <div class="mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle" style="width: 80px; height: 80px;">
+                        <i class="bi bi-search" style="font-size: 2rem;"></i>
+                    </div>
                 </div>
-                <h4>Termine finden</h4>
-                <p>Patienten suchen nach verfügbaren Terminen in ihrer Stadt</p>
+                <h4 class="mb-3">Termine finden</h4>
+                <p class="text-muted">Patienten suchen nach verfügbaren Terminen in ihrer Stadt</p>
             </div>
-            <div class="col-md-4 text-center">
-                <div class="mb-3">
-                    <span class="badge bg-primary fs-1">3</span>
+            <div class="col-md-4 text-center mb-4">
+                <div class="mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle" style="width: 80px; height: 80px;">
+                        <i class="bi bi-calendar-check-fill" style="font-size: 2rem;"></i>
+                    </div>
                 </div>
-                <h4>Buchen & Bezahlen</h4>
-                <p>Sichere Buchung mit Kaution über Stripe</p>
+                <h4 class="mb-3">Buchen & Bezahlen</h4>
+                <p class="text-muted">Sichere Buchung mit Kaution über Stripe</p>
             </div>
         </div>
     </div>
@@ -71,22 +77,32 @@
         <h2 class="text-center mb-5">Wählen Sie Ihren Benutzertyp</h2>
         <div class="row justify-content-center">
             <div class="col-md-5">
-                <div class="card h-100">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Für Patienten</h5>
-                        <p class="card-text">Finden Sie schnell freie Termine bei Ärzten in Ihrer Nähe. Einfache Registrierung mit Verifizierung.</p>
-                        <a href="{{ url_for('auth_web.patient_login') }}" class="btn btn-primary">Als Patient anmelden</a>
-                        <br><small class="text-muted">Oder <a href="{{ url_for('auth_web.patient_register') }}">registrieren</a></small>
+                <div class="card h-100 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-4">
+                            <i class="bi bi-heart-pulse-fill text-primary" style="font-size: 3rem;"></i>
+                        </div>
+                        <h5 class="card-title mb-3">Für Patienten</h5>
+                        <p class="card-text text-muted mb-4">Finden Sie schnell freie Termine bei Ärzten in Ihrer Nähe. Einfache Registrierung mit Verifizierung.</p>
+                        <a href="{{ url_for('auth_web.patient_login') }}" class="btn btn-primary btn-lg w-100 mb-2">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Als Patient anmelden
+                        </a>
+                        <small class="text-muted">Noch kein Konto? <a href="{{ url_for('auth_web.patient_register') }}" class="text-primary fw-bold">Registrieren</a></small>
                     </div>
                 </div>
             </div>
             <div class="col-md-5">
-                <div class="card h-100">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Für Ärzte</h5>
-                        <p class="card-text">Verwalten Sie Ihre Termine effizient. Vollständige Verifizierung erforderlich.</p>
-                        <a href="{{ url_for('auth_web.doctor_login') }}" class="btn btn-success">Als Arzt anmelden</a>
-                        <br><small class="text-muted">Oder <a href="{{ url_for('auth_web.doctor_register') }}">registrieren</a></small>
+                <div class="card h-100 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-4">
+                            <i class="bi bi-briefcase-fill text-success" style="font-size: 3rem;"></i>
+                        </div>
+                        <h5 class="card-title mb-3">Für Ärzte</h5>
+                        <p class="card-text text-muted mb-4">Verwalten Sie Ihre Termine effizient. Vollständige Verifizierung erforderlich.</p>
+                        <a href="{{ url_for('auth_web.doctor_login') }}" class="btn btn-success btn-lg w-100 mb-2">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Als Arzt anmelden
+                        </a>
+                        <small class="text-muted">Noch kein Konto? <a href="{{ url_for('auth_web.doctor_register') }}" class="text-success fw-bold">Registrieren</a></small>
                     </div>
                 </div>
             </div>
