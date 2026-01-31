@@ -198,16 +198,17 @@ def chat_with_practice(practice_id):
         # Отправляем запрос к OpenAI
         try:
             from openai import OpenAI
-            import httpx
             
-            # Создаем HTTP клиент без прокси для Render.com
-            http_client = httpx.Client(proxies=None)
+            # Создаем клиент OpenAI без прокси (игнорируем переменные окружения Render)
+            # Устанавливаем пустые переменные прокси локально для этого запроса
+            import os as os_module
+            env = os_module.environ.copy()
+            env.pop('HTTP_PROXY', None)
+            env.pop('HTTPS_PROXY', None)
+            env.pop('http_proxy', None)
+            env.pop('https_proxy', None)
             
-            # Создаем клиент OpenAI с кастомным HTTP клиентом
-            client = OpenAI(
-                api_key=openai_api_key,
-                http_client=http_client
-            )
+            client = OpenAI(api_key=openai_api_key)
             
             messages = [
                 {'role': 'system', 'content': system_prompt}
