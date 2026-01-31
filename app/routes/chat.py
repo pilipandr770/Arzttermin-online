@@ -197,18 +197,30 @@ def chat_with_practice(practice_id):
         
         # Отправляем запрос к OpenAI
         try:
-            from openai import OpenAI
-            
-            # Сохраняем текущие прокси-переменные и временно удаляем их
-            # Render.com автоматически добавляет HTTP_PROXY, что конфликтует с OpenAI client
+            # Сохраняем и удаляем прокси-переменные ДО импорта
+            # Render.com автоматически добавляет HTTP_PROXY, что конфликтует с OpenAI/httpx
             proxy_vars = {}
-            for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
+            for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']:
                 if key in os.environ:
                     proxy_vars[key] = os.environ[key]
                     del os.environ[key]
             
             try:
-                client = OpenAI(api_key=openai_api_key)
+                # Импортируем OpenAI ПОСЛЕ очистки переменных окружения
+                from openai import OpenAI
+                import httpx
+                
+                # Создаем httpx клиент без прокси явно
+                http_client = httpx.Client(
+                    timeout=30.0,
+                    follow_redirects=True
+                )
+                
+                # Создаем OpenAI client с нашим httpx клиентом
+                client = OpenAI(
+                    api_key=openai_api_key,
+                    http_client=http_client
+                )
             finally:
                 # Восстанавливаем прокси-переменные
                 for key, value in proxy_vars.items():
