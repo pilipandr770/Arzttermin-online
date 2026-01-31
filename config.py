@@ -49,6 +49,10 @@ class Config:
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER', 'noreply@terminfinder.de')
     
+    # AI Chatbot (OpenAI)
+    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+    OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview')  # or 'gpt-3.5-turbo' for cheaper option
+    
     # URLs
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
     

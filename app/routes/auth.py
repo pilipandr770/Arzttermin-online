@@ -218,7 +218,7 @@ def api_doctor_register():
     # Создаем календарь для врача
     from app.models import Calendar
     import json
-    from datetime import datetime, timedelta
+    from datetime import timedelta
     from app.models import TimeSlot
     
     # Создаем календарь с базовыми настройками

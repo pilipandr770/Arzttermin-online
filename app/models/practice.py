@@ -110,6 +110,9 @@ class Practice(db.Model):
     meta_description = db.Column(db.Text, nullable=True)
     slug = db.Column(db.String(200), unique=True, nullable=True, index=True)  # URL-friendly name
     
+    # AI Chatbot configuration
+    chatbot_instructions = db.Column(db.Text, nullable=True)  # Custom instructions for the practice AI assistant
+    
     # Статус верификации
     verified = db.Column(db.Boolean, default=False, nullable=False)
     verified_at = db.Column(db.DateTime, nullable=True)

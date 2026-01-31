@@ -160,6 +160,8 @@ def get_available_doctors():
             'bio': doctor.bio[:150] + '...' if doctor.bio and len(doctor.bio) > 150 else doctor.bio,
             'experience_years': doctor.experience_years,
             'languages': json.loads(doctor.languages) if isinstance(doctor.languages, str) else doctor.languages,
+            'practice_id': str(doctor.practice_id) if doctor.practice_id else None,
+            'practice_name': practice.name if practice else None,
             'practice': practice_data,
             'free_slots_count': int(free_slots),
             'has_available_slots': int(free_slots) > 0

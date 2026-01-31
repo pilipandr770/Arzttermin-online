@@ -80,7 +80,8 @@ def api_get_practice_profile():
         'telegram_username': practice.telegram_username,
         'meta_title': practice.meta_title,
         'meta_description': practice.meta_description,
-        'slug': practice.slug
+        'slug': practice.slug,
+        'chatbot_instructions': practice.chatbot_instructions
     })
 
 
@@ -217,6 +218,10 @@ def api_update_extended_practice_profile():
     # FAQ
     if 'faq' in data:
         practice.faq_list = data['faq']
+    
+    # Chatbot instructions
+    if 'chatbot_instructions' in data:
+        practice.chatbot_instructions = data['chatbot_instructions']
     
     # Public transport
     if 'public_transport' in data:

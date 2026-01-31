@@ -699,6 +699,158 @@ function showInsuranceModal(doctorId, practiceName) {
     modal.show();
 }
 
+// ==================== CHATBOT MODAL ====================
+
+let currentChatPracticeId = null;
+let chatConversationId = null;
+let chatHistory = [];
+
+function openChatbotModal(practiceId, practiceName) {
+    if (!practiceId) {
+        alert('Chatbot ist für diese Praxis nicht verfügbar.');
+        return;
+    }
+    
+    currentChatPracticeId = practiceId;
+    chatConversationId = null; // Reset conversation
+    chatHistory = [];
+    
+    const modalHtml = `
+        <div class="modal fade" id="chatbotModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content" style="height: 80vh;">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-robot"></i> Praxis-Assistent: ${practiceName}
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-0 d-flex flex-column" style="height: 100%;">
+                        <div class="alert alert-info m-3 mb-0">
+                            <i class="bi bi-info-circle"></i> <small><strong>AI-Assistent</strong><br>
+                            Ich helfe Ihnen gerne mit Fragen zu Anfahrt, Öffnungszeiten, Leistungen und mehr!</small>
+                        </div>
+                        <div id="chatMessages" class="flex-grow-1 p-3" style="overflow-y: auto; max-height: calc(80vh - 250px);">
+                            <div class="text-center text-muted py-5">
+                                <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
+                                <p class="mt-2">Stellen Sie mir eine Frage!</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="chatInput" 
+                                   placeholder="Ihre Nachricht..." maxlength="1000"
+                                   onkeypress="if(event.key === 'Enter') sendChatMessage()">
+                            <button class="btn btn-primary" onclick="sendChatMessage()" id="chatSendBtn">
+                                <i class="bi bi-send"></i> Senden
+                            </button>
+                        </div>
+                        <small class="text-muted w-100 mt-1">
+                            <i class="bi bi-shield-check"></i> Ihre Nachrichten werden vertraulich behandelt
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const existing = document.getElementById('chatbotModal');
+    if (existing) existing.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('chatbotModal'));
+    modal.show();
+    
+    // Focus input field
+    document.getElementById('chatbotModal').addEventListener('shown.bs.modal', function() {
+        document.getElementById('chatInput').focus();
+    });
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message || !currentChatPracticeId) return;
+    
+    // Disable input during request
+    input.disabled = true;
+    document.getElementById('chatSendBtn').disabled = true;
+    
+    // Add user message to chat
+    addChatMessage(message, 'user');
+    input.value = '';
+    
+    // Show typing indicator
+    const typingId = addChatMessage('...', 'assistant', true);
+    
+    try {
+        const response = await fetch(`/api/chat/${currentChatPracticeId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: message,
+                conversation_id: chatConversationId
+            })
+        });
+        
+        // Remove typing indicator
+        const typingMsg = document.getElementById(typingId);
+        if (typingMsg) typingMsg.remove();
+        
+        if (response.ok) {
+            const data = await response.json();
+            chatConversationId = data.conversation_id;
+            addChatMessage(data.reply, 'assistant');
+        } else {
+            const error = await response.json();
+            addChatMessage(error.error || 'Entschuldigung, ein Fehler ist aufgetreten.', 'assistant', false, true);
+        }
+    } catch (error) {
+        // Remove typing indicator
+        const typingMsg = document.getElementById(typingId);
+        if (typingMsg) typingMsg.remove();
+        
+        console.error('Chat error:', error);
+        addChatMessage('Verbindungsfehler. Bitte versuchen Sie es später erneut.', 'assistant', false, true);
+    } finally {
+        input.disabled = false;
+        document.getElementById('chatSendBtn').disabled = false;
+        input.focus();
+    }
+}
+
+function addChatMessage(text, sender, isTyping = false, isError = false) {
+    const messagesDiv = document.getElementById('chatMessages');
+    
+    // Remove empty state
+    const emptyState = messagesDiv.querySelector('.text-center');
+    if (emptyState) emptyState.remove();
+    
+    const messageId = `msg-${Date.now()}-${Math.random()}`;
+    const isUser = sender === 'user';
+    
+    const messageHtml = `
+        <div class="d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'} mb-3" id="${messageId}">
+            <div class="message-bubble ${isUser ? 'bg-primary text-white' : isError ? 'bg-danger text-white' : 'bg-light'}" 
+                 style="max-width: 75%; border-radius: 15px; padding: 10px 15px; ${isTyping ? 'opacity: 0.6;' : ''}">
+                ${!isUser && !isTyping ? '<i class="bi bi-robot me-1"></i>' : ''}
+                ${isTyping ? '<span class="typing-indicator">...</span>' : text}
+            </div>
+        </div>
+    `;
+    
+    messagesDiv.insertAdjacentHTML('beforeend', messageHtml);
+    
+    // Scroll to bottom
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    return messageId;
+}
+
 // City autocomplete
 let cityAutocompleteTimeout = null;
 const cityInput = document.getElementById('search-city');
@@ -1114,7 +1266,14 @@ async function displayDoctors(doctors) {
                             </div>
                             ` : ''}
 
-                            <!-- 8. Termine -->
+                            <!-- 8. Chatbot - AI Assistant -->
+                            <button class="info-btn-full w-100" onclick="openChatbotModal('${doctor.practice_id}', '${doctor.practice_name || doctor.full_name}')">
+                                <i class="bi bi-robot"></i>
+                                <span>Chatbot - Praxis Assistent</span>
+                                <span class="badge bg-info ms-1">AI</span>
+                            </button>
+
+                            <!-- 9. Termine -->
                             <button class="info-btn-full w-100 ${doctor.free_slots_count > 0 ? 'btn-slots-available' : 'btn-slots-none'}" 
                                     onclick="${doctor.free_slots_count > 0 ? `openSearchSlotsModal('${doctor.id}', '${doctor.full_name}')` : `toggleInfoSection('${doctor.id}', 'slots')`}">
                                 <i class="bi bi-calendar-check"></i>

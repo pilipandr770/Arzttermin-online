@@ -53,6 +53,11 @@
                                 <i class="bi bi-question-circle"></i> FAQ
                             </button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="chatbot-tab" data-bs-toggle="tab" data-bs-target="#chatbot" type="button">
+                                <i class="bi bi-robot"></i> Chatbot
+                            </button>
+                        </li>
                     </ul>
 
                     <!-- Tabs Content -->
@@ -284,6 +289,41 @@
                                 <button type="button" class="btn btn-outline-primary" onclick="addFAQ()">
                                     <i class="bi bi-plus-circle"></i> FAQ hinzufügen
                                 </button>
+                            </div>
+
+                            <!-- TAB 8: Chatbot -->
+                            <div class="tab-pane fade" id="chatbot" role="tabpanel">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-robot"></i> <strong>AI-Chatbot-Assistent</strong>
+                                    <p class="mb-0 mt-2">Der Chatbot hilft Patienten automatisch bei häufigen Fragen: Anfahrt, Parken, Öffnungszeiten, etc. 
+                                    Geben Sie hier zusätzliche spezifische Anweisungen für Ihre Praxis ein.</p>
+                                </div>
+
+                                <h6 class="text-primary mb-3">Individuelle Anweisungen für den Chatbot</h6>
+                                <p class="text-muted">
+                                    Diese Anweisungen werden dem Chatbot mitgegeben, zusätzlich zu allgemeinen Informationen über Ihre Praxis.
+                                    <br><strong>Beispiele:</strong>
+                                </p>
+                                <ul class="text-muted small mb-3">
+                                    <li>Wo Patienten sich umziehen sollen</li>
+                                    <li>Wo im Wartebereich Platz genommen werden soll</li>
+                                    <li>Besondere Hinweise für den ersten Termin</li>
+                                    <li>Was Patienten mitbringen sollen (Versicherungskarte, Vorbefunde, etc.)</li>
+                                    <li>Spezielle Verhaltensregeln in der Praxis</li>
+                                    <li>Informationen zu Barrierefreiheit</li>
+                                </ul>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Zusätzliche Anweisungen</label>
+                                    <textarea class="form-control" id="chatbot_instructions" rows="10"
+                                        placeholder="Beispiel:&#10;&#10;Wenn Patienten nach dem Weg zur Praxis fragen:&#10;- Vom Hauptbahnhof nehmen Sie die U3 oder U6 Richtung Garching bis Münchner Freiheit&#10;- Von dort sind es 5 Minuten zu Fuß&#10;- Die Praxis befindet sich im 2. Stock, es gibt einen Aufzug&#10;&#10;Für den ersten Termin:&#10;- Bitte 10 Minuten früher kommen für Anmeldung&#10;- Versicherungskarte und ggf. Überweisungsschein mitbringen&#10;- Der Wartebereich ist im 2. Stock direkt links&#10;&#10;Umkleiden und Vorbereitung:&#10;- Umkleidekabinen befinden sich im Behandlungszimmer&#10;- Bitte Wertsachen nicht unbeaufsichtigt lassen"></textarea>
+                                    <small class="text-muted">Der Chatbot nutzt diese Informationen zusammen mit den bereits ausgefüllten Profildaten (Adresse, Öffnungszeiten, Parken, etc.)</small>
+                                </div>
+
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> <strong>Wichtig:</strong>
+                                    <p class="mb-0">Der Chatbot kann KEINE medizinischen Diagnosen stellen oder Termine buchen. Er verweist Patienten automatisch an die entsprechenden Funktionen oder Ihre Telefonnummer.</p>
+                                </div>
                             </div>
                         </div>
 
