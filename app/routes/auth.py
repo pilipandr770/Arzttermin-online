@@ -172,6 +172,8 @@ def api_doctor_register():
         return jsonify({'error': 'Email, Passwort, Vorname und Nachname erforderlich'}), 400
     
     practice_id = None
+    practice = None
+    
     if practice_id_str:
         # Обработка practice_id если предоставлен
         try:
@@ -183,6 +185,20 @@ def api_doctor_register():
         practice = Practice.query.get(practice_id)
         if not practice:
             return jsonify({'error': 'Practice not found'}), 404
+    else:
+        # Если practice_id не указан, создаем новую практику автоматически
+        practice = Practice(
+            name=f"Praxis Dr. {last_name}",
+            vat_number=tax_number if tax_number else '',
+            owner_email=email,
+            phone='',
+            address='',
+            verified=True,  # Для разработки - автоматически верифицируем
+            verified_at=datetime.utcnow()
+        )
+        db.session.add(practice)
+        db.session.flush()  # Получить ID практики до коммита
+        practice_id = practice.id
     
     # Создаем врача (даже если такой email уже есть)
     doctor = Doctor(
@@ -262,6 +278,8 @@ def api_doctor_register():
     return jsonify({
         'message': 'Arzt erfolgreich registriert',
         'doctor_id': str(doctor.id),
+        'practice_id': str(practice_id),
+        'practice_name': practice.name if practice else None,
         'calendar_created': True,
         'slots_created': slots_created
     })
