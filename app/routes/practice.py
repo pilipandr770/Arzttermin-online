@@ -16,8 +16,8 @@ practice_api = Blueprint('practice_api', __name__)
 
 @bp.route('/profile')
 def practice_profile():
-    """Страница профиля практики"""
-    return render_template('doctor/practice_profile.html')
+    """Страница расширенного профиля практики"""
+    return render_template('doctor/practice_profile_extended.html')
 
 
 @practice_api.route('/profile', methods=['GET'])
@@ -248,7 +248,4 @@ def api_update_extended_practice_profile():
         return jsonify({'error': str(e)}), 500
 
 
-@bp.route('/profile/extended')
-def practice_profile_extended():
-    """Страница расширенного профиля практики"""
-    return render_template('doctor/practice_profile_extended.html')
+
