@@ -180,6 +180,14 @@ function cancelBooking(bookingId) {
     
     const reason = prompt('Grund für die Stornierung (optional):');
     
+    // Получаем токен
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        alert('Bitte melden Sie sich erneut an.');
+        window.location.href = '/patient/login';
+        return;
+    }
+    
     // Показываем индикатор загрузки
     const button = event.target.closest('button');
     const originalHTML = button.innerHTML;
@@ -189,14 +197,21 @@ function cancelBooking(bookingId) {
     fetch(`/api/patient/bookings/${bookingId}/cancel`, {
         method: 'POST',
         headers: {
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
             reason: reason || 'Vom Patienten storniert'
         })
     })
     .then(response => {
         if (!response.ok) {
+            if (response.status === 401) {
+                // Токен истек
+                localStorage.removeItem('access_token');
+                throw new Error('Sitzung abgelaufen. Bitte melden Sie sich erneut an.');
+            }
             return response.json().then(data => {
                 throw new Error(data.error || 'Stornierung fehlgeschlagen');
             });
@@ -217,6 +232,13 @@ function cancelBooking(bookingId) {
         // Восстанавливаем кнопку
         button.disabled = false;
         button.innerHTML = originalHTML;
+        
+        // Если токен истек, перенаправляем на login
+        if (error.message.includes('Sitzung abgelaufen')) {
+            setTimeout(() => {
+                window.location.href = '/patient/login';
+            }, 2000);
+        }
     });
 }
 </script>
