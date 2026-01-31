@@ -198,10 +198,15 @@ def chat_with_practice(practice_id):
         # Отправляем запрос к OpenAI
         try:
             from openai import OpenAI
-            # Создаем клиент без прокси (Render может добавлять их автоматически)
+            import httpx
+            
+            # Создаем HTTP клиент без прокси для Render.com
+            http_client = httpx.Client(proxies=None)
+            
+            # Создаем клиент OpenAI с кастомным HTTP клиентом
             client = OpenAI(
                 api_key=openai_api_key,
-                http_client=None  # Отключаем автоматическое определение прокси
+                http_client=http_client
             )
             
             messages = [
