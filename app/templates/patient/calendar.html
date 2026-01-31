@@ -254,9 +254,17 @@ async function loadCalendar() {
                                     <i class="bi bi-calendar-check"></i> ${doctor.free_slots_count} freie Termine
                                 </span>
                             </div>
-                            <button class="btn btn-sm btn-primary w-100" onclick="openSlotsModal('${doctor.id}', '${doctor.full_name}', '${startDate}', '${endDate}')">
-                                <i class="bi bi-calendar3"></i> Termine anzeigen
-                            </button>
+                            
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-sm btn-primary" onclick="openSlotsModal('${doctor.id}', '${doctor.full_name}', '${startDate}', '${endDate}')">
+                                    <i class="bi bi-calendar3"></i> Termine anzeigen
+                                </button>
+                                ${doctor.practice_id ? `
+                                <button class="btn btn-sm btn-outline-secondary" onclick="window.location.href='/patient/search?highlight=${doctor.id}'">
+                                    <i class="bi bi-info-circle"></i> Vollständiges Profil
+                                </button>
+                                ` : ''}
+                            </div>
                         </div>
                     </div>
                 </div>

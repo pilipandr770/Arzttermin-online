@@ -92,6 +92,23 @@
     transform: translateY(-2px);
 }
 
+.highlight-pulse {
+    animation: highlightPulse 3s ease-in-out;
+    box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7);
+}
+
+@keyframes highlightPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 20px 10px rgba(13, 110, 253, 0.4);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+    }
+}
+
 #slots-container {
     animation: slideDown 0.3s ease-out;
 }
@@ -1304,6 +1321,38 @@ async function displayDoctors(doctors) {
     html += '</div>';
     
     resultsDiv.innerHTML = html;
+    
+    // Проверяем URL параметр highlight для подсветки и автоматического открытия
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightDoctorId = urlParams.get('highlight');
+    if (highlightDoctorId) {
+        // Прокручиваем к карточке врача
+        const doctorCard = document.getElementById(`doctor-card-${highlightDoctorId}`);
+        if (doctorCard) {
+            setTimeout(() => {
+                doctorCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Добавляем временную анимацию подсветки
+                doctorCard.classList.add('highlight-pulse');
+                setTimeout(() => {
+                    doctorCard.classList.remove('highlight-pulse');
+                }, 3000);
+                
+                // Автоматически раскрываем все секции для этого врача
+                const sections = ['grundinfo', 'media', 'services', 'equipment', 'insurance', 'features', 'faq', 'termine'];
+                sections.forEach(section => {
+                    const sectionElement = document.getElementById(`section-${highlightDoctorId}-${section}`);
+                    if (sectionElement) {
+                        sectionElement.classList.add('show');
+                        expandedDoctors.add(`${highlightDoctorId}-${section}`);
+                        const chevron = document.getElementById(`chevron-${highlightDoctorId}-${section}`);
+                        if (chevron) {
+                            chevron.style.transform = 'rotate(180deg)';
+                        }
+                    }
+                });
+            }, 300);
+        }
+    }
 }
 
 function getSpecialityName(speciality) {
