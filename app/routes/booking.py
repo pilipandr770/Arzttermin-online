@@ -52,29 +52,22 @@ def cancel_booking(booking_id):
         data = request.get_json() or {}
         reason = data.get('reason', '')
         
-        booking.status = 'cancelled'
-        booking.cancelled_at = datetime.utcnow()
-        booking.cancelled_by = 'patient' if is_patient else 'doctor'
-        booking.cancellation_reason = reason
+        cancelled_by = 'patient' if is_patient else 'doctor'
         
-        # Освобождаем слот
-        if booking.timeslot:
-            booking.timeslot.status = 'available'
-        
-        db.session.commit()
-        
-        # TODO: отправить email уведомление
-        # TODO: обработать возврат средств через Stripe
-        
-        return jsonify({
-            'message': 'Booking cancelled successfully',
-            'booking': {
-                'id': str(booking.id),
-                'status': booking.status,
-                'cancelled_at': booking.cancelled_at.isoformat(),
-                'cancelled_by': booking.cancelled_by
-            }
-        })
+        # Используем метод модели для отмены (автоматически освобождает слот и проверяет алерты)
+        if booking.cancel(cancelled_by=cancelled_by, reason=reason):
+            return jsonify({
+                'message': 'Booking cancelled successfully',
+                'booking': {
+                    'id': str(booking.id),
+                    'status': booking.status,
+                    'cancelled_at': booking.cancelled_at.isoformat(),
+                    'cancelled_by': booking.cancelled_by,
+                    'refund_amount': float(booking.refund_amount) if booking.refund_amount else 0
+                }
+            })
+        else:
+            return jsonify({'error': 'Failed to cancel booking'}), 500
     
     except Exception as e:
         db.session.rollback()
