@@ -49,7 +49,7 @@ def create_app(config_name='default'):
     
     # Регистрация blueprints
     from app.routes import bp as main_bp
-    from app.routes import auth, practice, doctor, patient, booking, search, legal, calendar_integration, chat
+    from app.routes import auth, practice, doctor, patient, booking, search, legal, calendar_integration, chat, help_chat
     from app.routes import auth as auth_module
     from app.routes.doctor import doctor_api
     from app.routes.patient import patient_api
@@ -67,7 +67,8 @@ def create_app(config_name='default'):
     app.register_blueprint(search_api, url_prefix='/api/search')
     app.register_blueprint(legal.bp)
     app.register_blueprint(calendar_integration.bp)
-    app.register_blueprint(chat.bp)  # AI Chatbot
+    app.register_blueprint(chat.bp)  # AI Chatbot для практик
+    app.register_blueprint(help_chat.bp)  # AI Help Chatbot для помощи пользователям
     
     # Регистрация веб-интерфейсов (без /api префикса)
     app.register_blueprint(doctor.bp, name='doctor_web')
