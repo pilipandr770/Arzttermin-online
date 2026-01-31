@@ -135,6 +135,74 @@
     font-size: 1.2rem;
     margin-right: 4px;
 }
+
+/* NEW: Interactive elements */
+.clickable-badge {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.clickable-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.clickable-icon {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.clickable-icon:hover {
+    transform: scale(1.1);
+    filter: brightness(1.2);
+}
+
+.clickable-text {
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.clickable-text:hover {
+    color: #0d6efd !important;
+}
+
+.toggle-icon {
+    transition: transform 0.3s;
+    display: inline-block;
+    font-size: 0.8rem;
+}
+
+.doctor-photo-clickable:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+    transition: all 0.3s;
+}
+
+.feature-badge {
+    font-size: 1rem;
+    padding: 0.4rem 0.6rem;
+    margin: 0.1rem;
+}
+
+.gallery-thumb {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.gallery-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 10;
+}
+
+.collapse {
+    transition: all 0.3s ease-in-out;
+}
+
+.collapse.show {
+    animation: slideDown 0.3s ease-out;
+}
+
 </style>
 
 <script>
@@ -215,19 +283,315 @@ function generateMiniGallery(photos) {
     
     return html;
 }
-        max-height: 0;
-    }
-    to {
-        opacity: 1;
-        max-height: 1000px;
+
+// NEW: Interactive features with tooltips
+function generateInteractiveFeatures(features, doctorId) {
+    if (!features || features.length === 0) return '';
+    
+    const featureInfo = {
+        'wheelchair_accessible': { icon: 'universal-access', color: 'info', text: 'Barrierefrei zugänglich' },
+        'parking': { icon: 'p-circle', color: 'success', text: 'Parkplätze vorhanden' },
+        'wifi': { icon: 'wifi', color: 'primary', text: 'Kostenloses WLAN' },
+        'online_booking': { icon: 'calendar-check', color: 'warning', text: 'Online-Buchung möglich' },
+        'video_consultation': { icon: 'camera-video', color: 'danger', text: 'Video-Sprechstunde verfügbar' },
+        'emergency_appointments': { icon: 'lightning', color: 'warning', text: 'Notfall-Termine möglich' }
+    };
+    
+    let html = '';
+    features.slice(0, 6).forEach(feature => {
+        const info = featureInfo[feature];
+        if (info) {
+            html += `
+                <span class="feature-badge badge bg-${info.color} clickable-badge" 
+                      data-bs-toggle="tooltip" 
+                      data-bs-placement="top" 
+                      title="${info.text}">
+                    <i class="bi bi-${info.icon}"></i>
+                </span>
+            `;
+        }
+    });
+    
+    return html;
+}
+
+// NEW: Generate clickable gallery
+function generateClickableGallery(photos, doctorId) {
+    if (!photos || photos.length === 0) return '';
+    
+    let html = '<div class="mini-gallery mb-2">';
+    photos.forEach((photo, index) => {
+        html += `
+            <img src="${typeof photo === 'string' ? photo : photo.url}" 
+                 alt="Praxisfoto" 
+                 class="gallery-thumb"
+                 onclick="showGalleryModal('${doctorId}', ${index})">
+        `;
+    });
+    html += '</div>';
+    
+    return html;
+}
+
+// NEW: Toggle practice details
+function togglePracticeDetails(doctorId) {
+    const element = document.getElementById(`practice-details-${doctorId}`);
+    const icon = document.getElementById(`toggle-practice-${doctorId}`);
+    
+    if (element.classList.contains('show')) {
+        element.classList.remove('show');
+        icon.classList.remove('bi-chevron-up');
+        icon.classList.add('bi-chevron-down');
+    } else {
+        element.classList.add('show');
+        icon.classList.remove('bi-chevron-down');
+        icon.classList.add('bi-chevron-up');
     }
 }
-</style>
 
-<script>
-console.log('=== SEARCH PAGE SCRIPT LOADED ===');
-// Specialities data from server
-const SPECIALITIES_DATA = {{ specialities|tojson|safe }};
+// NEW: Toggle doctor bio
+function toggleDoctorBio(doctorId) {
+    const element = document.getElementById(`doctor-bio-${doctorId}`);
+    const icon = document.getElementById(`toggle-bio-${doctorId}`);
+    
+    if (element.classList.contains('show')) {
+        element.classList.remove('show');
+        icon.classList.remove('bi-chevron-up');
+        icon.classList.add('bi-chevron-down');
+    } else {
+        element.classList.add('show');
+        icon.classList.remove('bi-chevron-down');
+        icon.classList.add('bi-chevron-up');
+    }
+}
+
+// NEW: Show doctor photo modal
+function showDoctorPhotoModal(photoUrl, doctorName) {
+    const modalHtml = `
+        <div class="modal fade" id="doctorPhotoModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">${doctorName}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        <img src="${photoUrl}" class="img-fluid" alt="${doctorName}">
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existing = document.getElementById('doctorPhotoModal');
+    if (existing) existing.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('doctorPhotoModal'));
+    modal.show();
+}
+
+// NEW: Show gallery modal
+function showGalleryModal(doctorId, startIndex) {
+    const data = doctorsData[doctorId];
+    if (!data) {
+        console.error('Doctor data not found for id:', doctorId);
+        return;
+    }
+    
+    const photos = data.practice.gallery_photos || [];
+    const practiceName = data.practice.name || '';
+    
+    if (photos.length === 0) {
+        return;
+    }
+    
+    let currentIndex = startIndex;
+    
+    const showImage = (index) => {
+        const photo = photos[index];
+        const photoUrl = typeof photo === 'string' ? photo : photo.url;
+        const photoTitle = typeof photo === 'string' ? '' : (photo.title || '');
+        
+        const modalBody = document.getElementById('galleryModalBody');
+        modalBody.innerHTML = `
+            <img src="${photoUrl}" class="img-fluid" alt="Praxisfoto">
+            ${photoTitle ? `<p class="text-center mt-2 mb-0"><small>${photoTitle}</small></p>` : ''}
+        `;
+        
+        // Update navigation
+        document.getElementById('galleryPrev').disabled = index === 0;
+        document.getElementById('galleryNext').disabled = index === photos.length - 1;
+        document.getElementById('galleryCounter').textContent = `${index + 1} / ${photos.length}`;
+    };
+    
+    const modalHtml = `
+        <div class="modal fade" id="galleryModal" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-images"></i> ${practiceName} - Galerie
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="galleryModalBody">
+                        <!-- Image will be inserted here -->
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-secondary" id="galleryPrev">
+                            <i class="bi bi-chevron-left"></i> Zurück
+                        </button>
+                        <span id="galleryCounter"></span>
+                        <button type="button" class="btn btn-secondary" id="galleryNext">
+                            Weiter <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal
+    const existing = document.getElementById('galleryModal');
+    if (existing) existing.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Setup navigation
+    document.getElementById('galleryPrev').addEventListener('click', () => {
+        if (currentIndex > 0) {
+            currentIndex--;
+            showImage(currentIndex);
+        }
+    });
+    
+    document.getElementById('galleryNext').addEventListener('click', () => {
+        if (currentIndex < photos.length - 1) {
+            currentIndex++;
+            showImage(currentIndex);
+        }
+    });
+    
+    const modal = new bootstrap.Modal(document.getElementById('galleryModal'));
+    modal.show();
+    showImage(currentIndex);
+}
+
+// NEW: Show ratings info
+function showRatingsInfo(doctorId, practiceName, ratingAvg, ratingCount) {
+    const modalHtml = `
+        <div class="modal fade" id="ratingsModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-star-fill text-warning"></i> Bewertungen
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <h6>${practiceName}</h6>
+                        <div class="text-center my-3">
+                            <div class="display-4 text-warning">${ratingAvg.toFixed(1)}</div>
+                            ${generateStarRating(ratingAvg)}
+                            <p class="text-muted mt-2">Basierend auf ${ratingCount} Bewertung${ratingCount !== 1 ? 'en' : ''}</p>
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> 
+                            Detaillierte Bewertungen sind nach Ihrem Termin verfügbar.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const existing = document.getElementById('ratingsModal');
+    if (existing) existing.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('ratingsModal'));
+    modal.show();
+}
+
+// NEW: Show insurance modal
+function showInsuranceModal(doctorId, practiceName) {
+    const data = doctorsData[doctorId];
+    if (!data) {
+        console.error('Doctor data not found for id:', doctorId);
+        return;
+    }
+    
+    const insurances = data.practice.accepted_insurances || [];
+    if (insurances.length === 0) {
+        return;
+    }
+    
+    const publicIns = insurances.filter(i => i.type === 'public');
+    const privateIns = insurances.filter(i => i.type === 'private');
+    
+    const modalHtml = `
+        <div class="modal fade" id="insuranceModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-shield-check"></i> Akzeptierte Versicherungen
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <h6>${practiceName}</h6>
+                        
+                        ${publicIns.length > 0 ? `
+                        <div class="mt-3">
+                            <h6 class="text-success">
+                                <i class="bi bi-hospital"></i> Gesetzliche Krankenkassen
+                            </h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                ${publicIns.map(i => `<span class="badge bg-success">${i.name}</span>`).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${privateIns.length > 0 ? `
+                        <div class="mt-3">
+                            <h6 class="text-primary">
+                                <i class="bi bi-star"></i> Private Versicherungen
+                            </h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                ${privateIns.map(i => `<span class="badge bg-primary">${i.name}</span>`).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="alert alert-info mt-3 mb-0">
+                            <small>
+                                <i class="bi bi-info-circle"></i> 
+                                Bitte bestätigen Sie Ihre Versicherung bei der Terminbuchung.
+                            </small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const existing = document.getElementById('insuranceModal');
+    if (existing) existing.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modal = new bootstrap.Modal(document.getElementById('insuranceModal'));
+    modal.show();
+}
 
 // City autocomplete
 let cityAutocompleteTimeout = null;
@@ -257,6 +621,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!cityInput.contains(e.target) && !cityAutocompleteDiv.contains(e.target)) {
             cityAutocompleteDiv.style.display = 'none';
         }
+    });
+    
+    // Initialize Bootstrap tooltips for interactive elements
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
     // Автоматический поиск при загрузке страницы
@@ -385,12 +755,20 @@ async function searchDoctors() {
     }
 }
 
+// Store doctors data globally for modal access
+let doctorsData = {};
+
 async function displayDoctors(doctors) {
     const resultsDiv = document.getElementById('search-results');
     
-    console.log('displayDoctors called with:', doctors);
+    // Clear previous data
+    doctorsData = {};
+    
+    console.log('displayDoctors called with doctors array');
     console.log('Is array?', Array.isArray(doctors));
-    console.log('Length:', doctors ? doctors.length : 'null/undefined');
+    if (doctors) {
+        console.log('Length:', doctors.length);
+    }
     
     if (doctors.length === 0) {
         // Получаем текущие критерии поиска
@@ -468,6 +846,12 @@ async function displayDoctors(doctors) {
         const phone = practice.phone || '';
         const alertExists = alertExistsMap[doctor.id] || false;
         
+        // Store doctor data for modal access
+        doctorsData[doctor.id] = {
+            doctor: doctor,
+            practice: practice
+        };
+        
         // Rating display
         const ratingAvg = practice.rating_avg || 0;
         const ratingCount = practice.rating_count || 0;
@@ -482,7 +866,7 @@ async function displayDoctors(doctors) {
         const insurancesHtml = generateInsuranceBadges(insurances);
         
         // Doctor photo or placeholder
-        const doctorPhoto = doctor.photo_url || 'https://via.placeholder.com/150x150?text=' + encodeURIComponent(doctor.full_name);
+        const doctorPhoto = doctor.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(doctor.full_name)}&size=200&background=0D6EFD&color=fff&bold=true`;
         
         // Practice gallery mini-gallery
         const galleryPhotos = practice.gallery_photos || [];
@@ -493,105 +877,160 @@ async function displayDoctors(doctors) {
                 <div class="card h-100 shadow-sm hover-shadow">
                     <!-- Doctor Photo -->
                     <div class="position-relative">
-                        <img src="${doctorPhoto}" class="card-img-top" alt="${doctor.full_name}" style="height: 200px; object-fit: cover;">
+                        <img src="${doctorPhoto}" class="card-img-top doctor-photo-clickable" alt="${doctor.full_name}" 
+                             style="height: 200px; object-fit: cover; cursor: pointer;"
+                             onclick="showDoctorPhotoModal('${doctorPhoto}', '${doctor.full_name}')">
                         ${doctor.title ? `<span class="badge bg-primary position-absolute top-0 start-0 m-2">${doctor.title}</span>` : ''}
-                        ${doctor.experience_years ? `<span class="badge bg-info position-absolute top-0 end-0 m-2">${doctor.experience_years} Jahre Erfahrung</span>` : ''}
+                        ${doctor.experience_years ? `
+                        <span class="badge bg-info position-absolute top-0 end-0 m-2 clickable-badge" 
+                              data-bs-toggle="tooltip" data-bs-placement="left" 
+                              title="Seit ${doctor.experience_years} Jahren in der Praxis tätig">
+                            <i class="bi bi-award"></i> ${doctor.experience_years} Jahre
+                        </span>` : ''}
+                        ${ratingCount > 0 ? `
+                        <span class="badge bg-warning position-absolute bottom-0 end-0 m-2 clickable-badge"
+                              onclick="showRatingsInfo('${doctor.id}', '${practiceName}', ${ratingAvg}, ${ratingCount})">
+                            <i class="bi bi-star-fill"></i> ${ratingAvg.toFixed(1)}
+                        </span>` : ''}
                     </div>
                     
-                    <div class="card-body">
+                    <div class="card-body p-3">
                         <!-- Doctor Name & Speciality -->
-                        <h6 class="card-title mb-2">
+                        <h6 class="card-title mb-1">
                             <i class="bi bi-person-circle text-primary"></i>
                             ${doctor.full_name_with_title || doctor.full_name}
                         </h6>
                         <p class="text-primary mb-2 small fw-bold">${doctor.speciality_display}</p>
                         
-                        <!-- Bio snippet -->
-                        ${doctor.bio ? `<p class="text-muted small mb-2" style="font-size: 0.85rem;">${doctor.bio}</p>` : ''}
-                        
-                        <!-- Languages -->
+                        <!-- Languages with clickable icon -->
                         ${doctor.languages && doctor.languages.length > 0 ? `
                         <div class="mb-2">
-                            <small class="text-muted">
-                                <i class="bi bi-translate"></i> 
-                                ${doctor.languages.map(lang => lang.toUpperCase()).join(', ')}
+                            <span class="badge bg-light text-dark clickable-icon" 
+                                  data-bs-toggle="tooltip" 
+                                  title="Spricht: ${doctor.languages.map(function(l) { return l.toUpperCase(); }).join(', ')}">
+                                <i class="bi bi-translate"></i> ${doctor.languages.length} Sprache${doctor.languages.length > 1 ? 'n' : ''}
+                            </span>
+                        </div>
+                        ` : ''}
+                        
+                        <!-- Practice Info with clickable icon -->
+                        ${practiceName ? `
+                        <div class="mb-2">
+                            <small class="text-muted clickable-text" onclick="togglePracticeDetails('${doctor.id}')">
+                                <i class="bi bi-hospital"></i> ${practiceName}
+                                <i class="bi bi-chevron-down toggle-icon" id="toggle-practice-${doctor.id}"></i>
                             </small>
                         </div>
                         ` : ''}
                         
-                        <!-- Practice Info -->
-                        ${practiceName ? `
-                        <div class="border-top pt-2 mt-2">
-                            <p class="text-muted mb-1 small fw-bold">
-                                <i class="bi bi-hospital"></i> ${practiceName}
-                            </p>
-                            ${practiceCity ? `<p class="text-muted mb-2 small"><i class="bi bi-geo-alt"></i> ${practiceCity}</p>` : ''}
-                            
-                            <!-- Rating -->
-                            ${ratingCount > 0 ? `
-                            <div class="mb-2">
-                                ${ratingStars}
-                                <small class="text-muted">(${ratingCount} Bewertungen)</small>
+                        <!-- Collapsible Practice Details -->
+                        <div id="practice-details-${doctor.id}" class="collapse">
+                            <div class="card card-body bg-light mb-2 p-2">
+                                ${practiceCity ? `
+                                <small class="mb-1">
+                                    <i class="bi bi-geo-alt text-primary"></i> 
+                                    <a href="https://maps.google.com/?q=${encodeURIComponent(practiceName + ' ' + practiceCity)}" 
+                                       target="_blank" class="text-decoration-none">
+                                        ${practiceCity}
+                                    </a>
+                                </small>` : ''}
+                                
+                                ${phone ? `
+                                <small class="mb-1">
+                                    <i class="bi bi-telephone text-success"></i> 
+                                    <a href="tel:${phone}" class="text-decoration-none">${phone}</a>
+                                </small>` : ''}
+                                
+                                ${practice.emergency_phone ? `
+                                <small class="mb-1">
+                                    <i class="bi bi-exclamation-triangle text-danger"></i> 
+                                    Notfall: <a href="tel:${practice.emergency_phone}" class="text-decoration-none">${practice.emergency_phone}</a>
+                                </small>` : ''}
+                                
+                                ${practice.whatsapp_number ? `
+                                <small class="mb-1">
+                                    <i class="bi bi-whatsapp text-success"></i> 
+                                    <a href="https://wa.me/${practice.whatsapp_number.replace(/[^0-9]/g, '')}" 
+                                       target="_blank" class="text-decoration-none">WhatsApp</a>
+                                </small>` : ''}
+                                
+                                ${website || googleBusiness ? `
+                                <div class="d-flex gap-1 mt-1">
+                                    ${website ? `<a href="${website}" target="_blank" class="btn btn-xs btn-outline-primary btn-sm" title="Website"><i class="bi bi-globe"></i></a>` : ''}
+                                    ${googleBusiness ? `<a href="${googleBusiness}" target="_blank" class="btn btn-xs btn-outline-info btn-sm" title="Google"><i class="bi bi-google"></i></a>` : ''}
+                                </div>` : ''}
                             </div>
-                            ` : ''}
-                            
-                            <!-- Features Icons -->
-                            ${featuresHtml ? `
-                            <div class="mb-2">
-                                ${featuresHtml}
-                            </div>
-                            ` : ''}
-                            
-                            <!-- Mini Gallery -->
-                            ${galleryHtml}
-                            
-                            <!-- Insurance Badges -->
-                            ${insurancesHtml ? `
-                            <div class="mb-2">
-                                <small class="text-muted d-block mb-1">Akzeptierte Versicherungen:</small>
-                                ${insurancesHtml}
-                            </div>
-                            ` : ''}
+                        </div>
+                        
+                        <!-- Features Icons with tooltips -->
+                        ${features.length > 0 ? `
+                        <div class="mb-2 d-flex gap-1 flex-wrap">
+                            ${generateInteractiveFeatures(features, doctor.id)}
                         </div>
                         ` : ''}
                         
-                        <!-- Quick Links -->
-                        ${(website || googleBusiness || phone) ? `
-                        <div class="mb-2 d-flex gap-2">
-                            ${website ? `<a href="${website}" target="_blank" class="btn btn-sm btn-outline-primary" title="Website"><i class="bi bi-globe"></i></a>` : ''}
-                            ${googleBusiness ? `<a href="${googleBusiness}" target="_blank" class="btn btn-sm btn-outline-info" title="Google Business"><i class="bi bi-google"></i></a>` : ''}
-                            ${phone ? `<a href="tel:${phone}" class="btn btn-sm btn-outline-secondary" title="Anrufen"><i class="bi bi-telephone"></i></a>` : ''}
+                        <!-- Insurance info icon -->
+                        ${insurances.length > 0 ? `
+                        <div class="mb-2">
+                            <span class="badge bg-success clickable-badge" 
+                                  onclick="showInsuranceModal('${doctor.id}', '${practiceName.replace(/'/g, "\\'")}')">
+                                <i class="bi bi-shield-check"></i> ${insurances.length} Versicherung${insurances.length > 1 ? 'en' : ''}
+                            </span>
+                        </div>
+                        ` : ''}
+                        
+                        <!-- Collapsible Doctor Bio -->
+                        ${doctor.bio ? `
+                        <div class="mb-2">
+                            <small class="text-muted clickable-text" onclick="toggleDoctorBio('${doctor.id}')">
+                                <i class="bi bi-info-circle"></i> Über den Arzt
+                                <i class="bi bi-chevron-down toggle-icon" id="toggle-bio-${doctor.id}"></i>
+                            </small>
+                            <div id="doctor-bio-${doctor.id}" class="collapse mt-1">
+                                <small class="text-muted">${doctor.bio}</small>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <!-- Mini Gallery clickable -->
+                        ${galleryPhotos.length > 0 ? `
+                        <div class="mb-2">
+                            <small class="text-muted d-block mb-1">
+                                <i class="bi bi-images"></i> Praxisfotos
+                            </small>
+                            ${generateClickableGallery(galleryPhotos, doctor.id)}
                         </div>
                         ` : ''}
                         
                         <!-- Availability Badge -->
                         <div class="mb-2">
-                            <span class="badge ${doctor.free_slots_count > 0 ? 'bg-success' : 'bg-secondary'}">
-                                <i class="bi bi-calendar-check"></i> ${doctor.free_slots_count > 0 ? doctor.free_slots_count + ' freie Termine' : 'Keine freien Termine'}
+                            <span class="badge ${doctor.free_slots_count > 0 ? 'bg-success' : 'bg-secondary'} w-100">
+                                <i class="bi bi-calendar-check"></i> 
+                                ${doctor.free_slots_count > 0 ? doctor.free_slots_count + ' freie Termine' : 'Keine freien Termine'}
                             </span>
                         </div>
                         
                         <!-- Action Buttons -->
                         <div class="d-grid gap-2">
-                            ${practice.slug ? `
-                            <a href="/practice/${practice.slug}" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-info-circle"></i> Zur Praxis-Seite
-                            </a>
-                            ` : ''}
-                            
                             ${doctor.free_slots_count > 0 ? `
-                            <button class="btn btn-sm btn-primary" onclick="openSearchSlotsModal('${doctor.id}', '${doctor.full_name}')">
+                            <button class="btn btn-primary" onclick="openSearchSlotsModal('${doctor.id}', '${doctor.full_name}')">
                                 <i class="bi bi-calendar3"></i> Termine anzeigen
                             </button>
                             ` : alertExists ? `
-                            <button class="btn btn-sm btn-success" disabled>
+                            <button class="btn btn-success" disabled>
                                 <i class="bi bi-bell-fill"></i> Benachrichtigung aktiv
                             </button>
                             ` : `
-                            <button class="btn btn-sm btn-warning" onclick="createAlert('${doctor.id}', '${doctor.full_name}', '${doctor.speciality}')">
+                            <button class="btn btn-warning" onclick="createAlert('${doctor.id}', '${doctor.full_name}', '${doctor.speciality}')">
                                 <i class="bi bi-bell"></i> Benachrichtigung einrichten
                             </button>
                             `}
+                            
+                            ${practice.slug ? `
+                            <a href="/practice/${practice.slug}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-info-circle"></i> Mehr über die Praxis
+                            </a>
+                            ` : ''}
                         </div>
                     </div>
                 </div>
