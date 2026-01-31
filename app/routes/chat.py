@@ -198,7 +198,11 @@ def chat_with_practice(practice_id):
         # Отправляем запрос к OpenAI
         try:
             from openai import OpenAI
-            client = OpenAI(api_key=openai_api_key)
+            # Создаем клиент без прокси (Render может добавлять их автоматически)
+            client = OpenAI(
+                api_key=openai_api_key,
+                http_client=None  # Отключаем автоматическое определение прокси
+            )
             
             messages = [
                 {'role': 'system', 'content': system_prompt}
