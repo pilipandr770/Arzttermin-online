@@ -199,16 +199,20 @@ def chat_with_practice(practice_id):
         try:
             from openai import OpenAI
             
-            # Создаем клиент OpenAI без прокси (игнорируем переменные окружения Render)
-            # Устанавливаем пустые переменные прокси локально для этого запроса
-            import os as os_module
-            env = os_module.environ.copy()
-            env.pop('HTTP_PROXY', None)
-            env.pop('HTTPS_PROXY', None)
-            env.pop('http_proxy', None)
-            env.pop('https_proxy', None)
+            # Сохраняем текущие прокси-переменные и временно удаляем их
+            # Render.com автоматически добавляет HTTP_PROXY, что конфликтует с OpenAI client
+            proxy_vars = {}
+            for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
+                if key in os.environ:
+                    proxy_vars[key] = os.environ[key]
+                    del os.environ[key]
             
-            client = OpenAI(api_key=openai_api_key)
+            try:
+                client = OpenAI(api_key=openai_api_key)
+            finally:
+                # Восстанавливаем прокси-переменные
+                for key, value in proxy_vars.items():
+                    os.environ[key] = value
             
             messages = [
                 {'role': 'system', 'content': system_prompt}
