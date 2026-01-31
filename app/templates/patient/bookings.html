@@ -174,10 +174,50 @@ function formatDateTime(date, time) {
 }
 
 function cancelBooking(bookingId) {
-    if (confirm('Sind Sie sicher, dass Sie diesen Termin stornieren möchten?')) {
-        // В MVP отмена не реализована
-        alert('Terminabsage ist in dieser Version nicht verfügbar.');
+    if (!confirm('Möchten Sie diesen Termin wirklich stornieren?\n\nDer Termin wird für andere Patienten wieder verfügbar.')) {
+        return;
     }
+    
+    const reason = prompt('Grund für die Stornierung (optional):');
+    
+    // Показываем индикатор загрузки
+    const button = event.target.closest('button');
+    const originalHTML = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Storniere...';
+    
+    fetch(`/api/patient/bookings/${bookingId}/cancel`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            reason: reason || 'Vom Patienten storniert'
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Stornierung fehlgeschlagen');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Успешно отменено
+        alert(`Termin erfolgreich storniert!\n\nBuchungscode: ${data.booking_code}\nRückerstattung: ${data.refund_amount}€`);
+        
+        // Перезагружаем список бронирований
+        loadBookings();
+    })
+    .catch(error => {
+        console.error('Fehler beim Stornieren:', error);
+        alert(`Fehler: ${error.message}`);
+        
+        // Восстанавливаем кнопку
+        button.disabled = false;
+        button.innerHTML = originalHTML;
+    });
 }
 </script>
 {% endblock %}

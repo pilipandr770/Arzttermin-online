@@ -218,9 +218,13 @@ def api_bookings():
     return jsonify({
         'bookings': [{
             'id': str(booking.id),
+            'booking_code': booking.booking_code,
+            'doctor_id': str(booking.timeslot.calendar.doctor_id) if booking.timeslot and booking.timeslot.calendar else None,
             'doctor_name': booking.timeslot.calendar.doctor.first_name + ' ' + booking.timeslot.calendar.doctor.last_name if booking.timeslot and booking.timeslot.calendar and booking.timeslot.calendar.doctor else 'Unknown',
             'practice_name': booking.timeslot.calendar.doctor.practice.name if booking.timeslot and booking.timeslot.calendar and booking.timeslot.calendar.doctor and booking.timeslot.calendar.doctor.practice else 'Unknown',
             'speciality': booking.timeslot.calendar.doctor.speciality if booking.timeslot and booking.timeslot.calendar and booking.timeslot.calendar.doctor else 'Unknown',
+            'appointment_date': booking.timeslot.start_time.strftime('%Y-%m-%d') if booking.timeslot else '',
+            'appointment_time': booking.timeslot.start_time.strftime('%H:%M') if booking.timeslot else '',
             'date': booking.timeslot.start_time.strftime('%Y-%m-%d') if booking.timeslot else '',
             'time': booking.timeslot.start_time.strftime('%H:%M') if booking.timeslot else '',
             'status': booking.status,
