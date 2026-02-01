@@ -36,7 +36,6 @@ function populateForm() {
     document.getElementById('whatsapp_number').value = practiceData.whatsapp_number || '';
     document.getElementById('telegram_username').value = practiceData.telegram_username || '';
     document.getElementById('contact_email').value = practiceData.contact_email || '';
-    document.getElementById('opening_hours').value = practiceData.opening_hours || '';
     document.getElementById('website').value = practiceData.website || '';
     
     // Google Business
@@ -300,7 +299,6 @@ function setupFormHandler() {
             whatsapp_number: document.getElementById('whatsapp_number').value,
             telegram_username: document.getElementById('telegram_username').value,
             contact_email: document.getElementById('contact_email').value,
-            opening_hours: document.getElementById('opening_hours').value,
             website: document.getElementById('website').value,
             google_business_url: document.getElementById('google_business_url').value,
             social_media: {
