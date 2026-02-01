@@ -40,19 +40,21 @@ function populateForm() {
     document.getElementById('description').value = practiceData.description || '';
     document.getElementById('parking_info').value = practiceData.parking_info || '';
     
+    // Google Business
+    document.getElementById('google_business_url').value = practiceData.google_business_url || '';
+    
     // Social media
     const social = practiceData.social_media || {};
     document.getElementById('social_facebook').value = social.facebook || '';
     document.getElementById('social_instagram').value = social.instagram || '';
     document.getElementById('social_linkedin').value = social.linkedin || '';
+    document.getElementById('social_twitter').value = social.twitter || '';
+    document.getElementById('social_youtube').value = social.youtube || '';
+    document.getElementById('social_tiktok').value = social.tiktok || '';
     
     // Media
     document.getElementById('video_url').value = practiceData.video_url || '';
     document.getElementById('virtual_tour_url').value = practiceData.virtual_tour_url || '';
-    
-    // Gallery photos
-    const gallery = practiceData.gallery_photos || [];
-    loadGalleryPhotos(gallery);
     
     // Services
     const services = practiceData.services || [];
@@ -303,17 +305,20 @@ function setupFormHandler() {
             whatsapp_number: document.getElementById('whatsapp_number').value,
             telegram_username: document.getElementById('telegram_username').value,
             website: document.getElementById('website').value,
+            google_business_url: document.getElementById('google_business_url').value,
             slug: document.getElementById('slug').value,
             description: document.getElementById('description').value,
             parking_info: document.getElementById('parking_info').value,
             social_media: {
                 facebook: document.getElementById('social_facebook').value,
                 instagram: document.getElementById('social_instagram').value,
-                linkedin: document.getElementById('social_linkedin').value
+                linkedin: document.getElementById('social_linkedin').value,
+                twitter: document.getElementById('social_twitter').value,
+                youtube: document.getElementById('social_youtube').value,
+                tiktok: document.getElementById('social_tiktok').value
             },
             video_url: document.getElementById('video_url').value,
             virtual_tour_url: document.getElementById('virtual_tour_url').value,
-            gallery_photos: collectGalleryPhotos(),
             services: collectServices(),
             equipment: collectEquipment(),
             accepted_insurances: collectInsurances(),

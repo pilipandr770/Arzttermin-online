@@ -1190,19 +1190,44 @@ async function displayDoctors(doctors) {
                             </div>
 
                             <!-- 2. Medien (Social Media & Links) -->
-                            ${website || googleBusiness || practice.video_url || practice.virtual_tour_url ? `
+                            ${(website || googleBusiness || practice.video_url || practice.virtual_tour_url || (practice.social_media && Object.keys(practice.social_media).length > 0)) ? `
                             <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'media')">
                                 <i class="bi bi-link-45deg"></i>
                                 <span>Medien & Links</span>
                                 <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-media"></i>
                             </button>
                             <div id="section-${doctor.id}-media" class="info-content collapse mb-2">
-                                <div class="d-flex flex-wrap gap-2">
-                                    ${website ? `<a href="${website}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="bi bi-globe"></i> Website</a>` : ''}
-                                    ${googleBusiness ? `<a href="${googleBusiness}" target="_blank" class="btn btn-outline-danger btn-sm"><i class="bi bi-google"></i> Google Business</a>` : ''}
-                                    ${practice.video_url ? `<a href="${practice.video_url}" target="_blank" class="btn btn-outline-success btn-sm"><i class="bi bi-play-circle"></i> Video</a>` : ''}
-                                    ${practice.virtual_tour_url ? `<a href="${practice.virtual_tour_url}" target="_blank" class="btn btn-outline-info btn-sm"><i class="bi bi-camera"></i> Virtuelle Tour</a>` : ''}
+                                ${(website || googleBusiness) ? `
+                                <div class="mb-3">
+                                    <p class="mb-2 fw-bold text-primary"><i class="bi bi-globe me-2"></i>Website & Profile</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        ${website ? `<a href="${website}" target="_blank" class="btn btn-outline-primary btn-sm"><i class="bi bi-globe"></i> Website</a>` : ''}
+                                        ${googleBusiness ? `<a href="${googleBusiness}" target="_blank" class="btn btn-outline-danger btn-sm"><i class="bi bi-google"></i> Google Business</a>` : ''}
+                                    </div>
                                 </div>
+                                ` : ''}
+                                ${(practice.social_media && Object.values(practice.social_media).some(v => v)) ? `
+                                <div class="mb-3">
+                                    <p class="mb-2 fw-bold text-primary"><i class="bi bi-share me-2"></i>Soziale Medien</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        ${practice.social_media.facebook ? `<a href="${practice.social_media.facebook}" target="_blank" class="btn btn-outline-primary btn-sm" title="Facebook"><i class="bi bi-facebook"></i></a>` : ''}
+                                        ${practice.social_media.instagram ? `<a href="${practice.social_media.instagram}" target="_blank" class="btn btn-outline-danger btn-sm" title="Instagram"><i class="bi bi-instagram"></i></a>` : ''}
+                                        ${practice.social_media.linkedin ? `<a href="${practice.social_media.linkedin}" target="_blank" class="btn btn-outline-primary btn-sm" title="LinkedIn"><i class="bi bi-linkedin"></i></a>` : ''}
+                                        ${practice.social_media.twitter ? `<a href="${practice.social_media.twitter}" target="_blank" class="btn btn-outline-info btn-sm" title="Twitter/X"><i class="bi bi-twitter"></i></a>` : ''}
+                                        ${practice.social_media.youtube ? `<a href="${practice.social_media.youtube}" target="_blank" class="btn btn-outline-danger btn-sm" title="YouTube"><i class="bi bi-youtube"></i></a>` : ''}
+                                        ${practice.social_media.tiktok ? `<a href="${practice.social_media.tiktok}" target="_blank" class="btn btn-outline-dark btn-sm" title="TikTok"><i class="bi bi-tiktok"></i></a>` : ''}
+                                    </div>
+                                </div>
+                                ` : ''}
+                                ${(practice.video_url || practice.virtual_tour_url) ? `
+                                <div>
+                                    <p class="mb-2 fw-bold text-primary"><i class="bi bi-camera-video me-2"></i>Multimedia</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        ${practice.video_url ? `<a href="${practice.video_url}" target="_blank" class="btn btn-outline-success btn-sm"><i class="bi bi-play-circle"></i> Video</a>` : ''}
+                                        ${practice.virtual_tour_url ? `<a href="${practice.virtual_tour_url}" target="_blank" class="btn btn-outline-info btn-sm"><i class="bi bi-camera"></i> 360° Tour</a>` : ''}
+                                    </div>
+                                </div>
+                                ` : ''}
                             </div>
                             ` : ''}
 

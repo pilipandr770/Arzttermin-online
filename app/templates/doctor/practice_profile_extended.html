@@ -87,10 +87,6 @@
                                         <label class="form-label">Telegram</label>
                                         <input type="text" class="form-control" id="telegram_username" placeholder="@username">
                                     </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Website</label>
-                                        <input type="url" class="form-control" id="website" placeholder="https://...">
-                                    </div>
                                 </div>
 
                                 <div class="row mb-3">
@@ -112,22 +108,6 @@
                                     </div>
                                 </div>
 
-                                <h6 class="text-primary mb-3 mt-4">Soziale Medien</h6>
-                                <div class="row mb-3">
-                                    <div class="col-md-4">
-                                        <label class="form-label"><i class="bi bi-facebook"></i> Facebook</label>
-                                        <input type="url" class="form-control" id="social_facebook">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label"><i class="bi bi-instagram"></i> Instagram</label>
-                                        <input type="url" class="form-control" id="social_instagram">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label"><i class="bi bi-linkedin"></i> LinkedIn</label>
-                                        <input type="url" class="form-control" id="social_linkedin">
-                                    </div>
-                                </div>
-
                                 <h6 class="text-primary mb-3 mt-4">Anfahrt & Parken</h6>
                                 <div class="row mb-3">
                                     <div class="col-12">
@@ -140,16 +120,51 @@
 
                             <!-- TAB 2: Medien -->
                             <div class="tab-pane fade" id="media" role="tabpanel">
-                                <h6 class="text-primary mb-3">Foto-Galerie</h6>
-                                <p class="text-muted">Laden Sie Fotos Ihrer Praxisräume, des Teams und der Ausstattung hoch.</p>
+                                <h6 class="text-primary mb-3">Website & Online-Präsenz</h6>
+                                <p class="text-muted">Fügen Sie Links zu Ihrer Website und Online-Profilen hinzu.</p>
                                 
-                                <div class="mb-4">
-                                    <div id="gallery-photos-list" class="row g-3">
-                                        <!-- Photos will be loaded here -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label"><i class="bi bi-globe"></i> Website</label>
+                                        <input type="url" class="form-control" id="website" placeholder="https://ihre-praxis.de">
+                                        <small class="text-muted">Ihre offizielle Praxis-Website</small>
                                     </div>
-                                    <button type="button" class="btn btn-outline-primary mt-3" onclick="addGalleryPhoto()">
-                                        <i class="bi bi-plus-circle"></i> Foto hinzufügen
-                                    </button>
+                                    <div class="col-md-6">
+                                        <label class="form-label"><i class="bi bi-google"></i> Google Business Profil</label>
+                                        <input type="url" class="form-control" id="google_business_url" placeholder="https://maps.google.com/...">
+                                        <small class="text-muted">Link zu Ihrem Google Business Profil</small>
+                                    </div>
+                                </div>
+
+                                <h6 class="text-primary mb-3 mt-4">Soziale Medien</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-facebook"></i> Facebook</label>
+                                        <input type="url" class="form-control" id="social_facebook" placeholder="https://facebook.com/...">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-instagram"></i> Instagram</label>
+                                        <input type="url" class="form-control" id="social_instagram" placeholder="https://instagram.com/...">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-linkedin"></i> LinkedIn</label>
+                                        <input type="url" class="form-control" id="social_linkedin" placeholder="https://linkedin.com/...">
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-twitter"></i> Twitter / X</label>
+                                        <input type="url" class="form-control" id="social_twitter" placeholder="https://twitter.com/...">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-youtube"></i> YouTube</label>
+                                        <input type="url" class="form-control" id="social_youtube" placeholder="https://youtube.com/...">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label"><i class="bi bi-tiktok"></i> TikTok</label>
+                                        <input type="url" class="form-control" id="social_tiktok" placeholder="https://tiktok.com/@...">
+                                    </div>
                                 </div>
 
                                 <h6 class="text-primary mb-3 mt-4">Video & Virtueller Rundgang</h6>
