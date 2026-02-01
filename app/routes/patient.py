@@ -473,6 +473,8 @@ def api_cancel_booking(booking_id):
     if not patient:
         return jsonify({'error': 'Patient not found'}), 404
     
+    print(f"[DEBUG] Cancelling booking: {booking_id} by patient: {patient.id}")
+    
     # ������� ������������
     booking = Booking.query.filter_by(
         id=uuid.UUID(booking_id),
@@ -480,10 +482,15 @@ def api_cancel_booking(booking_id):
     ).first()
     
     if not booking:
+        print(f"[ERROR] Booking not found: {booking_id}")
         return jsonify({'error': 'Booking not found'}), 404
+    
+    print(f"[DEBUG] Booking status: {booking.status}, can_cancel: {booking.can_be_cancelled()}")
+    print(f"[DEBUG] Cancellable until: {booking.cancellable_until}, now: {datetime.utcnow()}")
     
     # ��������� ����������� ������
     if not booking.can_be_cancelled():
+        print(f"[ERROR] Cannot cancel - deadline passed or wrong status")
         return jsonify({
             'error': 'Booking cannot be cancelled',
             'reason': 'Cancellation deadline has passed'
@@ -549,12 +556,14 @@ def api_create_alert():
         return jsonify({'error': 'Patient not found'}), 404
     
     data = request.get_json()
+    print(f"[DEBUG] Creating alert with data: {data}")
     
     # ��������: ���� �� doctor_id ��� speciality ������ ���� ������
     doctor_id = data.get('doctor_id')
     speciality = data.get('speciality')
     
     if not doctor_id and not speciality:
+        print(f"[ERROR] Neither doctor_id nor speciality provided")
         return jsonify({'error': 'Either doctor_id or speciality must be provided'}), 400
     
     # ��������� ��� ����� ����� ��� �� ����������
@@ -565,6 +574,7 @@ def api_create_alert():
             doctor_id=uuid.UUID(doctor_id),
             is_active=True
         ).first()
+        print(f"[DEBUG] Checking doctor alert: existing={existing_alert is not None}")
     else:
         # ���� ������ �������������, ��������� �� speciality
         existing_alert = PatientAlert.query.filter_by(
@@ -572,23 +582,35 @@ def api_create_alert():
             speciality=speciality,
             is_active=True
         ).first()
+        print(f"[DEBUG] Checking speciality alert: existing={existing_alert is not None}")
     
     if existing_alert:
+        print(f"[ERROR] Alert already exists: {existing_alert.to_dict()}")
         return jsonify({'error': 'Alert already exists for this doctor/speciality'}), 400
     
     # ������� �����
+    # ��������: ���� ������ ����, �������� ��� ��������������
+    if doctor_id:
+        doctor = Doctor.query.get(uuid.UUID(doctor_id))
+        if doctor:
+            speciality = doctor.speciality  # ����� speciality � �����
+    
     alert = PatientAlert(
         patient_id=patient.id,
         doctor_id=uuid.UUID(doctor_id) if doctor_id else None,
-        speciality=speciality if not doctor_id else None,
+        speciality=speciality,  # ������ ������ ���������
         city=data.get('city'),
         date_from=datetime.strptime(data['date_from'], '%Y-%m-%d').date() if data.get('date_from') else None,
         date_to=datetime.strptime(data['date_to'], '%Y-%m-%d').date() if data.get('date_to') else None,
         email_notifications=data.get('email_notifications', True)
     )
     
+    print(f"[DEBUG] Created alert object: doctor_id={alert.doctor_id}, speciality={alert.speciality}")
+    
     db.session.add(alert)
     db.session.commit()
+    
+    print(f"[SUCCESS] Alert saved with ID: {alert.id}")
     
     return jsonify({
         'message': 'Alert created successfully',
