@@ -1185,8 +1185,9 @@ async function displayDoctors(doctors) {
                                 ${practiceCity ? `<p class="mb-1"><i class="bi bi-geo-alt text-primary"></i> <strong>Adresse:</strong> ${practiceCity}</p>` : ''}
                                 ${phone ? `<p class="mb-1"><i class="bi bi-telephone text-success"></i> <strong>Telefon:</strong> <a href="tel:${phone}">${phone}</a></p>` : ''}
                                 ${practice.emergency_phone ? `<p class="mb-1"><i class="bi bi-exclamation-triangle text-danger"></i> <strong>Notfall:</strong> <a href="tel:${practice.emergency_phone}">${practice.emergency_phone}</a></p>` : ''}
+                                ${practice.contact_email ? `<p class="mb-1"><i class="bi bi-envelope text-info"></i> <strong>E-Mail:</strong> <a href="mailto:${practice.contact_email}">${practice.contact_email}</a></p>` : ''}
                                 ${practice.whatsapp_number ? `<p class="mb-1"><i class="bi bi-whatsapp text-success"></i> <strong>WhatsApp:</strong> <a href="https://wa.me/${practice.whatsapp_number.replace(/[^0-9]/g, '')}" target="_blank">Nachricht senden</a></p>` : ''}
-                                ${practice.opening_hours ? `<p class="mb-0"><i class="bi bi-clock text-info"></i> <strong>Öffnungszeiten:</strong> ${practice.opening_hours}</p>` : ''}
+                                ${practice.opening_hours ? `<p class="mb-0"><i class="bi bi-clock text-warning"></i> <strong>Öffnungszeiten:</strong><br><span style="white-space: pre-line;">${practice.opening_hours}</span></p>` : ''}
                             </div>
 
                             <!-- 2. Medien (Social Media & Links) -->

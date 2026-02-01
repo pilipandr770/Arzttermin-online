@@ -35,10 +35,9 @@ function populateForm() {
     document.getElementById('emergency_phone').value = practiceData.emergency_phone || '';
     document.getElementById('whatsapp_number').value = practiceData.whatsapp_number || '';
     document.getElementById('telegram_username').value = practiceData.telegram_username || '';
+    document.getElementById('contact_email').value = practiceData.contact_email || '';
+    document.getElementById('opening_hours').value = practiceData.opening_hours || '';
     document.getElementById('website').value = practiceData.website || '';
-    document.getElementById('slug').value = practiceData.slug || '';
-    document.getElementById('description').value = practiceData.description || '';
-    document.getElementById('parking_info').value = practiceData.parking_info || '';
     
     // Google Business
     document.getElementById('google_business_url').value = practiceData.google_business_url || '';
@@ -300,11 +299,10 @@ function setupFormHandler() {
             emergency_phone: document.getElementById('emergency_phone').value,
             whatsapp_number: document.getElementById('whatsapp_number').value,
             telegram_username: document.getElementById('telegram_username').value,
+            contact_email: document.getElementById('contact_email').value,
+            opening_hours: document.getElementById('opening_hours').value,
             website: document.getElementById('website').value,
             google_business_url: document.getElementById('google_business_url').value,
-            slug: document.getElementById('slug').value,
-            description: document.getElementById('description').value,
-            parking_info: document.getElementById('parking_info').value,
             social_media: {
                 facebook: document.getElementById('social_facebook').value,
                 instagram: document.getElementById('social_instagram').value,
