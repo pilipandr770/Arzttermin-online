@@ -82,43 +82,6 @@ function populateForm() {
     setValueSafe('chatbot_instructions', practiceData.chatbot_instructions);
 }
 
-// Gallery Photos
-function loadGalleryPhotos(photos) {
-    const container = document.getElementById('gallery-photos-list');
-    container.innerHTML = '';
-    
-    photos.forEach(photo => {
-        const template = document.getElementById('gallery-photo-template');
-        const clone = template.content.cloneNode(true);
-        clone.querySelector('.photo-url').value = photo.url || '';
-        clone.querySelector('.photo-title').value = photo.title || '';
-        container.appendChild(clone);
-    });
-}
-
-function addGalleryPhoto() {
-    const container = document.getElementById('gallery-photos-list');
-    const template = document.getElementById('gallery-photo-template');
-    const clone = template.content.cloneNode(true);
-    container.appendChild(clone);
-}
-
-function removeGalleryPhoto(btn) {
-    btn.closest('.gallery-photo-item').remove();
-}
-
-function collectGalleryPhotos() {
-    const photos = [];
-    document.querySelectorAll('.gallery-photo-item').forEach((item, index) => {
-        const url = item.querySelector('.photo-url').value;
-        const title = item.querySelector('.photo-title').value;
-        if (url) {
-            photos.push({ url, title, order: index });
-        }
-    });
-    return photos;
-}
-
 // Services
 function loadServices(services) {
     const container = document.getElementById('services-list');
@@ -258,43 +221,6 @@ function collectFeatures() {
     return features;
 }
 
-// FAQ
-function loadFAQ(faq) {
-    const container = document.getElementById('faq-list');
-    container.innerHTML = '';
-    
-    faq.forEach(item => {
-        const template = document.getElementById('faq-template');
-        const clone = template.content.cloneNode(true);
-        clone.querySelector('.faq-question').value = item.question || '';
-        clone.querySelector('.faq-answer').value = item.answer || '';
-        container.appendChild(clone);
-    });
-}
-
-function addFAQ() {
-    const container = document.getElementById('faq-list');
-    const template = document.getElementById('faq-template');
-    const clone = template.content.cloneNode(true);
-    container.appendChild(clone);
-}
-
-function removeFAQ(btn) {
-    btn.closest('.faq-item').remove();
-}
-
-function collectFAQ() {
-    const faq = [];
-    document.querySelectorAll('.faq-item').forEach((item, index) => {
-        const question = item.querySelector('.faq-question').value;
-        const answer = item.querySelector('.faq-answer').value;
-        if (question && answer) {
-            faq.push({ question, answer, order: index });
-        }
-    });
-    return faq;
-}
-
 // Form submission
 function setupFormHandler() {
     document.getElementById('extended-practice-form').addEventListener('submit', async function(e) {
@@ -361,25 +287,33 @@ function setupFormHandler() {
 // Calculate profile completeness
 function calculateCompleteness() {
     let score = 0;
-    const maxScore = 11;
+    const maxScore = 8;
     
-    if (collectGalleryPhotos().length >= 3) score++;
-    if (document.getElementById('description').value) score++;
-    if (collectServices().length >= 5) score++;
-    if (practiceData.opening_hours) score++;
+    // Contact information (2 points)
+    if (practiceData.phone) score++;
+    if (practiceData.contact_email) score++;
+    
+    // Online presence (2 points)
+    if (practiceData.website) score++;
+    const videoEl = document.getElementById('video_url');
+    const tourEl = document.getElementById('virtual_tour_url');
+    if ((videoEl && videoEl.value) || (tourEl && tourEl.value)) score++;
+    
+    // Services and equipment (2 points)
+    if (collectServices().length >= 3) score++;
+    if (collectEquipment().length >= 3) score++;
+    
+    // Insurances and features (2 points)
     if (collectInsurances().length > 0) score++;
     if (collectFeatures().length > 0) score++;
-    if (collectFAQ().length >= 3) score++;
-    if (document.getElementById('parking_info').value) score++;
-    if (practiceData.public_transport) score++;
-    if (document.getElementById('video_url').value) score++;
-    if (document.getElementById('virtual_tour_url').value) score++;
     
     const percentage = Math.round((score / maxScore) * 100);
     
     const badge = document.getElementById('profile-completeness');
-    badge.textContent = `${percentage}% vollständig`;
-    badge.className = 'badge ' + (percentage >= 80 ? 'bg-success' : percentage >= 50 ? 'bg-warning' : 'bg-danger');
+    if (badge) {
+        badge.textContent = `${percentage}% vollständig`;
+        badge.className = 'badge ' + (percentage >= 80 ? 'bg-success' : percentage >= 50 ? 'bg-warning' : 'bg-danger');
+    }
 }
 
 // Alert helper
