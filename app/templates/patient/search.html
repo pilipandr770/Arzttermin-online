@@ -284,7 +284,8 @@
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
     border-radius: 6px;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
 }
 
 .info-content ul {
@@ -292,12 +293,21 @@
     margin-bottom: 0;
 }
 
+.info-content ul.list-unstyled {
+    padding-left: 0;
+}
+
 .info-content li {
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
 }
 
 .info-content li i {
-    margin-right: 0.5rem;
+    font-size: 0.9em;
+}
+
+.info-content li:last-child {
+    margin-bottom: 0;
 }
 
 .collapse.show {
@@ -1236,16 +1246,16 @@ async function displayDoctors(doctors) {
                             </button>
                             <div id="section-${doctor.id}-insurance" class="info-content collapse mb-2">
                                 ${insurances.filter(i => i.type === 'public').length > 0 ? `
-                                <p class="mb-1 fw-bold"><small>Gesetzliche:</small></p>
-                                <div class="d-flex flex-wrap gap-1 mb-2">
-                                    ${insurances.filter(i => i.type === 'public').map(i => `<span class="badge bg-success">${i.name}</span>`).join('')}
-                                </div>
+                                <p class="mb-2 fw-bold text-success"><i class="bi bi-shield-fill-check me-2"></i>Gesetzliche:</p>
+                                <ul class="list-unstyled ms-3 mb-3">
+                                    ${insurances.filter(i => i.type === 'public').map(i => `<li class="mb-1"><i class="bi bi-check-circle-fill text-success me-2"></i>${i.name}</li>`).join('')}
+                                </ul>
                                 ` : ''}
                                 ${insurances.filter(i => i.type === 'private').length > 0 ? `
-                                <p class="mb-1 fw-bold"><small>Private:</small></p>
-                                <div class="d-flex flex-wrap gap-1">
-                                    ${insurances.filter(i => i.type === 'private').map(i => `<span class="badge bg-primary">${i.name}</span>`).join('')}
-                                </div>
+                                <p class="mb-2 fw-bold text-primary"><i class="bi bi-shield-fill-check me-2"></i>Private:</p>
+                                <ul class="list-unstyled ms-3">
+                                    ${insurances.filter(i => i.type === 'private').map(i => `<li class="mb-1"><i class="bi bi-check-circle-fill text-primary me-2"></i>${i.name}</li>`).join('')}
+                                </ul>
                                 ` : ''}
                             </div>
                             ` : ''}
@@ -1259,9 +1269,9 @@ async function displayDoctors(doctors) {
                                 <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-features"></i>
                             </button>
                             <div id="section-${doctor.id}-features" class="info-content collapse mb-2">
-                                <div class="d-flex flex-wrap gap-1">
-                                    ${features.map(f => `<span class="badge bg-light text-dark border"><i class="bi bi-check-circle text-success"></i> ${f}</span>`).join('')}
-                                </div>
+                                <ul class="list-unstyled">
+                                    ${features.map(f => `<li class="mb-2"><i class="bi bi-star-fill text-warning me-2"></i>${f}</li>`).join('')}
+                                </ul>
                             </div>
                             ` : ''}
 
