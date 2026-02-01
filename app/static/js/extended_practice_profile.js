@@ -30,29 +30,37 @@ async function loadExtendedProfile() {
 }
 
 function populateForm() {
+    // Helper function to safely set value
+    const setValueSafe = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.value = value || '';
+        }
+    };
+    
     // Basic fields
-    document.getElementById('phone').value = practiceData.phone || '';
-    document.getElementById('emergency_phone').value = practiceData.emergency_phone || '';
-    document.getElementById('whatsapp_number').value = practiceData.whatsapp_number || '';
-    document.getElementById('telegram_username').value = practiceData.telegram_username || '';
-    document.getElementById('contact_email').value = practiceData.contact_email || '';
-    document.getElementById('website').value = practiceData.website || '';
+    setValueSafe('phone', practiceData.phone);
+    setValueSafe('emergency_phone', practiceData.emergency_phone);
+    setValueSafe('whatsapp_number', practiceData.whatsapp_number);
+    setValueSafe('telegram_username', practiceData.telegram_username);
+    setValueSafe('contact_email', practiceData.contact_email);
+    setValueSafe('website', practiceData.website);
     
     // Google Business
-    document.getElementById('google_business_url').value = practiceData.google_business_url || '';
+    setValueSafe('google_business_url', practiceData.google_business_url);
     
     // Social media
     const social = practiceData.social_media || {};
-    document.getElementById('social_facebook').value = social.facebook || '';
-    document.getElementById('social_instagram').value = social.instagram || '';
-    document.getElementById('social_linkedin').value = social.linkedin || '';
-    document.getElementById('social_twitter').value = social.twitter || '';
-    document.getElementById('social_youtube').value = social.youtube || '';
-    document.getElementById('social_tiktok').value = social.tiktok || '';
+    setValueSafe('social_facebook', social.facebook);
+    setValueSafe('social_instagram', social.instagram);
+    setValueSafe('social_linkedin', social.linkedin);
+    setValueSafe('social_twitter', social.twitter);
+    setValueSafe('social_youtube', social.youtube);
+    setValueSafe('social_tiktok', social.tiktok);
     
     // Media
-    document.getElementById('video_url').value = practiceData.video_url || '';
-    document.getElementById('virtual_tour_url').value = practiceData.virtual_tour_url || '';
+    setValueSafe('video_url', practiceData.video_url);
+    setValueSafe('virtual_tour_url', practiceData.virtual_tour_url);
     
     // Services
     const services = practiceData.services || [];
@@ -71,7 +79,7 @@ function populateForm() {
     loadFeatures(features);
     
     // Chatbot instructions
-    document.getElementById('chatbot_instructions').value = practiceData.chatbot_instructions || '';
+    setValueSafe('chatbot_instructions', practiceData.chatbot_instructions);
 }
 
 // Gallery Photos
@@ -292,30 +300,36 @@ function setupFormHandler() {
     document.getElementById('extended-practice-form').addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        // Helper function to safely get value
+        const getValueSafe = (id) => {
+            const element = document.getElementById(id);
+            return element ? element.value : '';
+        };
+        
         // Collect all data
         const formData = {
-            phone: document.getElementById('phone').value,
-            emergency_phone: document.getElementById('emergency_phone').value,
-            whatsapp_number: document.getElementById('whatsapp_number').value,
-            telegram_username: document.getElementById('telegram_username').value,
-            contact_email: document.getElementById('contact_email').value,
-            website: document.getElementById('website').value,
-            google_business_url: document.getElementById('google_business_url').value,
+            phone: getValueSafe('phone'),
+            emergency_phone: getValueSafe('emergency_phone'),
+            whatsapp_number: getValueSafe('whatsapp_number'),
+            telegram_username: getValueSafe('telegram_username'),
+            contact_email: getValueSafe('contact_email'),
+            website: getValueSafe('website'),
+            google_business_url: getValueSafe('google_business_url'),
             social_media: {
-                facebook: document.getElementById('social_facebook').value,
-                instagram: document.getElementById('social_instagram').value,
-                linkedin: document.getElementById('social_linkedin').value,
-                twitter: document.getElementById('social_twitter').value,
-                youtube: document.getElementById('social_youtube').value,
-                tiktok: document.getElementById('social_tiktok').value
+                facebook: getValueSafe('social_facebook'),
+                instagram: getValueSafe('social_instagram'),
+                linkedin: getValueSafe('social_linkedin'),
+                twitter: getValueSafe('social_twitter'),
+                youtube: getValueSafe('social_youtube'),
+                tiktok: getValueSafe('social_tiktok')
             },
-            video_url: document.getElementById('video_url').value,
-            virtual_tour_url: document.getElementById('virtual_tour_url').value,
+            video_url: getValueSafe('video_url'),
+            virtual_tour_url: getValueSafe('virtual_tour_url'),
             services: collectServices(),
             equipment: collectEquipment(),
             accepted_insurances: collectInsurances(),
             features: collectFeatures(),
-            chatbot_instructions: document.getElementById('chatbot_instructions').value
+            chatbot_instructions: getValueSafe('chatbot_instructions')
         };
         
         // Save
