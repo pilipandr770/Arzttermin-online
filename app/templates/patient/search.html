@@ -1231,37 +1231,35 @@ async function displayDoctors(doctors) {
                             </div>
                             ` : ''}
 
-                            <!-- 3. Leistungen -->
-                            ${practice.services && practice.services_list.length > 0 ? `
+                            <!-- 3. Leistungen & Ausstattung -->
+                            ${(practice.services && practice.services_list.length > 0) || (practice.equipment && practice.equipment_list.length > 0) ? `
                             <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'services')">
                                 <i class="bi bi-briefcase"></i>
-                                <span>Leistungen</span>
-                                <span class="badge bg-primary ms-1">${practice.services_list.length}</span>
+                                <span>Leistungen & Ausstattung</span>
+                                ${practice.services_list.length > 0 || practice.equipment_list.length > 0 ? `<span class="badge bg-primary ms-1">${(practice.services_list || []).length + (practice.equipment_list || []).length}</span>` : ''}
                                 <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-services"></i>
                             </button>
                             <div id="section-${doctor.id}-services" class="info-content collapse mb-2">
-                                <ul class="list-unstyled mb-0">
-                                    ${practice.services_list.map(s => `<li><i class="bi bi-check-circle text-success"></i> ${s}</li>`).join('')}
-                                </ul>
+                                ${practice.services && practice.services_list.length > 0 ? `
+                                <div class="mb-3">
+                                    <p class="mb-2 fw-bold text-primary"><i class="bi bi-briefcase me-2"></i>Leistungen:</p>
+                                    <ul class="list-unstyled ms-3">
+                                        ${practice.services_list.map(s => `<li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>${s}</li>`).join('')}
+                                    </ul>
+                                </div>
+                                ` : ''}
+                                ${practice.equipment && practice.equipment_list.length > 0 ? `
+                                <div>
+                                    <p class="mb-2 fw-bold text-primary"><i class="bi bi-gear me-2"></i>Ausstattung:</p>
+                                    <ul class="list-unstyled ms-3">
+                                        ${practice.equipment_list.map(e => `<li class="mb-1"><i class="bi bi-check-circle text-info me-2"></i>${e}</li>`).join('')}
+                                    </ul>
+                                </div>
+                                ` : ''}
                             </div>
                             ` : ''}
 
-                            <!-- 4. Ausstattung -->
-                            ${practice.equipment && practice.equipment_list.length > 0 ? `
-                            <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'equipment')">
-                                <i class="bi bi-gear"></i>
-                                <span>Ausstattung</span>
-                                <span class="badge bg-info ms-1">${practice.equipment_list.length}</span>
-                                <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-equipment"></i>
-                            </button>
-                            <div id="section-${doctor.id}-equipment" class="info-content collapse mb-2">
-                                <ul class="list-unstyled mb-0">
-                                    ${practice.equipment_list.map(e => `<li><i class="bi bi-check-circle text-info"></i> ${e}</li>`).join('')}
-                                </ul>
-                            </div>
-                            ` : ''}
-
-                            <!-- 5. Versicherungen -->
+                            <!-- 4. Versicherungen -->
                             ${insurances.length > 0 ? `
                             <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'insurance')">
                                 <i class="bi bi-shield-check"></i>
@@ -1285,7 +1283,7 @@ async function displayDoctors(doctors) {
                             </div>
                             ` : ''}
 
-                            <!-- 6. Besonderheiten -->
+                            <!-- 5. Besonderheiten -->
                             ${features.length > 0 ? `
                             <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'features')">
                                 <i class="bi bi-stars"></i>
@@ -1300,32 +1298,14 @@ async function displayDoctors(doctors) {
                             </div>
                             ` : ''}
 
-                            <!-- 7. FAQ -->
-                            ${practice.faq && practice.faq_list.length > 0 ? `
-                            <button class="info-btn-full w-100 mb-2" onclick="toggleInfoSection('${doctor.id}', 'faq')">
-                                <i class="bi bi-question-circle"></i>
-                                <span>FAQ</span>
-                                <span class="badge bg-secondary ms-1">${practice.faq_list.length}</span>
-                                <i class="bi bi-chevron-down ms-auto toggle-chevron" id="chevron-${doctor.id}-faq"></i>
-                            </button>
-                            <div id="section-${doctor.id}-faq" class="info-content collapse mb-2">
-                                ${practice.faq_list.map(faq => `
-                                <div class="mb-2 pb-2 border-bottom">
-                                    <p class="mb-1 fw-bold"><small><i class="bi bi-question-circle text-primary"></i> ${faq.question}</small></p>
-                                    <p class="mb-0 text-muted"><small><i class="bi bi-arrow-return-right"></i> ${faq.answer}</small></p>
-                                </div>
-                                `).join('')}
-                            </div>
-                            ` : ''}
-
-                            <!-- 8. Chatbot - AI Assistant -->
+                            <!-- 6. Chatbot - AI Assistant -->
                             <button class="info-btn-full w-100" onclick="openChatbotModal('${doctor.practice_id}', '${doctor.practice_name || doctor.full_name}')">
                                 <i class="bi bi-robot"></i>
                                 <span>Chatbot - Praxis Assistent</span>
                                 <span class="badge bg-info ms-1">AI</span>
                             </button>
 
-                            <!-- 9. Termine -->
+                            <!-- 7. Termine -->
                             <button class="info-btn-full w-100 ${doctor.free_slots_count > 0 ? 'btn-slots-available' : 'btn-slots-none'}" 
                                     onclick="${doctor.free_slots_count > 0 ? `openSearchSlotsModal('${doctor.id}', '${doctor.full_name}')` : `toggleInfoSection('${doctor.id}', 'slots')`}">
                                 <i class="bi bi-calendar-check"></i>
@@ -1373,7 +1353,7 @@ async function displayDoctors(doctors) {
                 }, 3000);
                 
                 // Автоматически раскрываем все секции для этого врача
-                const sections = ['grundinfo', 'media', 'services', 'equipment', 'insurance', 'features', 'faq', 'termine'];
+                const sections = ['grundinfo', 'media', 'services', 'insurance', 'features', 'termine'];
                 sections.forEach(section => {
                     const sectionElement = document.getElementById(`section-${highlightDoctorId}-${section}`);
                     if (sectionElement) {

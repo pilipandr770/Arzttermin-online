@@ -72,10 +72,6 @@ function populateForm() {
     const features = practiceData.features || [];
     loadFeatures(features);
     
-    // FAQ
-    const faq = practiceData.faq || [];
-    loadFAQ(faq);
-    
     // Chatbot instructions
     document.getElementById('chatbot_instructions').value = practiceData.chatbot_instructions || '';
 }
@@ -323,7 +319,6 @@ function setupFormHandler() {
             equipment: collectEquipment(),
             accepted_insurances: collectInsurances(),
             features: collectFeatures(),
-            faq: collectFAQ(),
             chatbot_instructions: document.getElementById('chatbot_instructions').value
         };
         
