@@ -419,16 +419,20 @@ def api_book_slot():
     data = request.get_json()
     slot_id = data.get('slot_id')
     
+    print(f"[DEBUG] Booking request from patient {patient.id} for slot {slot_id}")
+    
     if not slot_id:
         return jsonify({'error': 'Slot ID required'}), 400
     
     slot = TimeSlot.query.get(uuid.UUID(slot_id))
     if not slot or slot.status != 'available':
+        print(f"[ERROR] Slot not available: slot={slot}, status={slot.status if slot else 'None'}")
         return jsonify({'error': 'Slot not available'}), 400
     
     # ���������, �� ������������ �� ��� ���� ����
     existing_booking = Booking.query.filter_by(timeslot_id=slot.id).first()
     if existing_booking:
+        print(f"[ERROR] Slot already booked: {existing_booking.id}")
         return jsonify({'error': 'Slot already booked'}), 400
     
     # ������� ������������
@@ -450,6 +454,8 @@ def api_book_slot():
     
     db.session.add(booking)
     db.session.commit()
+    
+    print(f"[SUCCESS] Booking created: {booking.id}, code: {booking.booking_code}")
     
     return jsonify({
         'message': 'Booking created successfully',

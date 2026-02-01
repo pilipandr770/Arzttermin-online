@@ -1658,16 +1658,17 @@ async function createSearchAlert() {
         if (response.ok) {
             const data = await response.json();
             console.log('Alert created:', data);
-            alert('Benachrichtigung erfolgreich eingerichtet!\n\nSie werden informiert, sobald ein Termin verfügbar wird.\n\nSie können Ihre Benachrichtigungen im Dashboard verwalten.');
-            // Очищаем результаты и позволяем продолжить поиск
-            clearFilters();
+            alert('Benachrichtigung erfolgreich eingerichtet!\n\nSie werden informiert, sobald ein Termin verfügbar wird.\n\nSie werden zu Ihren Benachrichtigungen weitergeleitet...');
+            // Перенаправляем на dashboard где показаны все алерты
+            window.location.href = '/patient/dashboard';
         } else {
             const error = await response.json();
             console.error('Error response:', error);
             console.error('Full error details:', JSON.stringify(error, null, 2));
             if (error.error === 'Alert already exists for this doctor/speciality') {
-                alert('Sie haben bereits eine Benachrichtigung für diese Suche eingerichtet.\n\nSie können sie in Ihrem Dashboard verwalten.');
-                clearFilters();
+                alert('Sie haben bereits eine Benachrichtigung für diese Suche eingerichtet.\n\nSie werden zu Ihren Benachrichtigungen weitergeleitet...');
+                // Перенаправляем на dashboard где можно управлять алертами
+                window.location.href = '/patient/dashboard';
             } else {
                 alert('Fehler: ' + (error.error || 'Konnte Benachrichtigung nicht erstellen'));
             }
@@ -1704,11 +1705,18 @@ async function createAlert(doctorId, doctorName, speciality) {
         if (response.ok) {
             const data = await response.json();
             console.log('Alert created:', data);
-            alert('Benachrichtigung erfolgreich eingerichtet!\n\nSie erhalten eine Nachricht, sobald ein Termin verfügbar wird.');
+            alert('Benachrichtigung erfolgreich eingerichtet!\n\nSie erhalten eine Nachricht, sobald ein Termin verfügbar wird.\n\nSie werden zu Ihren Benachrichtigungen weitergeleitet...');
+            // Перенаправляем на dashboard где показаны алерты
+            window.location.href = '/patient/dashboard';
         } else {
             const error = await response.json();
             console.error('Error response:', error);
-            alert('Fehler: ' + (error.error || 'Konnte Benachrichtigung nicht erstellen'));
+            if (error.error === 'Alert already exists for this doctor/speciality') {
+                alert('Sie haben bereits eine Benachrichtigung für diesen Arzt.\n\nSie werden zu Ihren Benachrichtigungen weitergeleitet...');
+                window.location.href = '/patient/dashboard';
+            } else {
+                alert('Fehler: ' + (error.error || 'Konnte Benachrichtigung nicht erstellen'));
+            }
         }
     } catch (error) {
         console.error('Error creating alert:', error);
