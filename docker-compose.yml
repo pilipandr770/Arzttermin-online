@@ -19,20 +19,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis (for Celery)
-  redis:
-    image: redis:7-alpine
-    container_name: terminfinder_redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # Flask Application
   web:
     build: .
@@ -45,49 +31,11 @@ services:
     environment:
       - FLASK_ENV=development
       - DATABASE_URL=postgresql://terminfinder_user:your_secure_password@postgres:5432/terminfinder
-      - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-    env_file:
-      - .env
-
-  # Celery Worker
-  celery_worker:
-    build: .
-    container_name: terminfinder_celery_worker
-    command: celery -A app.celery worker --loglevel=info
-    volumes:
-      - .:/app
-    environment:
-      - DATABASE_URL=postgresql://terminfinder_user:your_secure_password@postgres:5432/terminfinder
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - postgres
-      - redis
-      - web
-    env_file:
-      - .env
-
-  # Celery Beat (for scheduled tasks)
-  celery_beat:
-    build: .
-    container_name: terminfinder_celery_beat
-    command: celery -A app.celery beat --loglevel=info
-    volumes:
-      - .:/app
-    environment:
-      - DATABASE_URL=postgresql://terminfinder_user:your_secure_password@postgres:5432/terminfinder
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - postgres
-      - redis
-      - web
     env_file:
       - .env
 
 volumes:
   postgres_data:
-  redis_data:

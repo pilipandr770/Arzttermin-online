@@ -25,7 +25,7 @@ services:
         sync: false
       - key: MAIL_PASSWORD
         sync: false
-      - key: REDIS_URL
+      - key: OPENAI_API_KEY
         sync: false
 
 databases:

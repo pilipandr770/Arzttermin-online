@@ -197,122 +197,91 @@ def chat_with_practice(practice_id):
                 'session_id': session_id
             }), 200  # 200 OK, not an error - legitimate response
         
-        # Enqueue chatbot processing task (medium priority)
-        # ⚠️ Fallback to synchronous if Redis unavailable (local dev)
+        # PHASE 3: Direct OpenAI API call (no Redis/RQ needed)
+        # Same approach as help_chat.py - simple, reliable, fast
+        
+        # SCOPE VALIDATION - Block medical queries
+        from app.utils.chatbot_scope import validate_scope
+        is_valid, reason, blocked_response = validate_scope(user_message)
+        
+        if not is_valid:
+            print(f"⚠️ Blocked medical query: {reason}")
+            return jsonify({
+                'type': 'scope_violation',
+                'medical_advice': False,
+                'response': blocked_response,
+                'reason': reason,
+                'session_id': session_id
+            }), 200
+        
+        # Call OpenAI API directly
         try:
-            from app.workers import default_queue
+            openai_api_key = os.getenv('OPENAI_API_KEY')
+            if not openai_api_key:
+                print("❌ ERROR: OPENAI_API_KEY not configured!")
+                return jsonify({
+                    'error': 'Der Chatbot-Service ist derzeit nicht verfügbar.',
+                    'code': 'config_error'
+                }), 503
             
-            if default_queue is None:
-                # Redis unavailable - run synchronously
-                print("⚠️ Redis unavailable, running chatbot synchronously")
-                from app.workers.chatbot_tasks import process_chatbot_message
+            # Build system prompt with practice context
+            system_prompt = get_system_prompt(practice)
+            
+            # Remove Render.com proxy (blocks OpenAI API)
+            proxy_vars = {}
+            for var in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
+                if var in os.environ:
+                    proxy_vars[var] = os.environ[var]
+                    del os.environ[var]
+            
+            try:
+                from openai import OpenAI
+                import httpx
                 
-                result = process_chatbot_message(
-                    user_message,
-                    practice_id=str(practice.id),
-                    session_id=session_id
+                # Create httpx client with timeout
+                http_client = httpx.Client(timeout=60.0)
+                
+                client = OpenAI(
+                    api_key=openai_api_key,
+                    http_client=http_client
                 )
                 
-                if result:
-                    # Handle blocked responses from worker
-                    if result.get('status') == 'blocked':
-                        return jsonify({
-                            'type': result.get('type', 'scope_violation'),
-                            'medical_advice': False,
-                            'response': result.get('response'),
-                            'reason': result.get('reason'),
-                            'session_id': session_id
-                        }), 200
-                    
-                    # Handle success responses
-                    if result.get('status') == 'success':
-                        return jsonify({
-                            'type': result.get('type', 'platform_help'),
-                            'medical_advice': False,
-                            'response': result.get('response'),
-                            'session_id': session_id,
-                            'disclaimer': result.get('disclaimer', 'Dies ist keine medizinische Beratung.')
-                        }), 200
-                    
-                    # Handle errors
-                    error_msg = result.get('error', 'Unknown error')
-                    print(f"Chatbot task failed: {error_msg}")
-                    return jsonify({
-                        'error': 'Der Chatbot-Service ist derzeit nicht verfügbar. Bitte kontaktieren Sie die Praxis direkt.',
-                        'code': 'service_unavailable'
-                    }), 503
-                else:
-                    return jsonify({
-                        'error': 'Der Chatbot-Service ist derzeit nicht verfügbar.',
-                        'code': 'service_unavailable'
-                    }), 503
-            
-            # Redis available - enqueue async task
-            from app.workers.chatbot_tasks import process_chatbot_message
-            
-            # Enqueue task and wait for result (synchronous for MVP)
-            # ⚠️ TODO Phase 4: Make this fully async with polling or websockets
-            job = default_queue.enqueue(
-                process_chatbot_message,
-                user_message,
-                practice_id=str(practice.id),
-                session_id=session_id,
-                timeout=90  # Increased from 30 to allow OpenAI API timeout (60s) + buffer
-            )
-            
-            # Wait for result (synchronous for MVP, will be async in production)
-            import time
-            max_wait = 75  # Increased from 30 to match OpenAI timeout (60s) + buffer
-            waited = 0
-            while job.result is None and waited < max_wait:
-                time.sleep(0.5)
-                waited += 0.5
-                job.refresh()
-            
-            if job.result:
-                result = job.result
+                print(f"🔍 Calling OpenAI API for practice={practice.name}, session={session_id}")
                 
-                # Handle blocked responses from worker
-                if result.get('status') == 'blocked':
-                    return jsonify({
-                        'type': result.get('type', 'scope_violation'),
-                        'medical_advice': False,
-                        'response': result.get('response'),
-                        'reason': result.get('reason'),
-                        'session_id': session_id
-                    }), 200
+                response = client.chat.completions.create(
+                    model=os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview'),
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message}
+                    ],
+                    timeout=60
+                )
                 
-                # Handle success responses
-                if result.get('status') == 'success':
-                    return jsonify({
-                        'type': result.get('type', 'platform_help'),
-                        'medical_advice': False,  # ALWAYS false
-                        'response': result.get('response'),
-                        'session_id': session_id,
-                        'disclaimer': result.get('disclaimer', 'Dies ist keine medizinische Beratung.')
-                    }), 200
+                assistant_message = response.choices[0].message.content
                 
-                # Handle errors
-                error_msg = result.get('error', 'Unknown error')
-                print(f"Chatbot task failed: {error_msg}")
+                print(f"✅ Practice chatbot success: practice={practice.name}, response_length={len(assistant_message)}")
+                
                 return jsonify({
-                    'error': 'Der Chatbot-Service ist derzeit nicht verfügbar. Bitte kontaktieren Sie die Praxis direkt.',
-                    'code': 'service_unavailable'
-                }), 503
-            else:
-                # Timeout - log for debugging
-                print(f"❌ Chatbot task timeout after {max_wait}s - practice={practice.id}, session={session_id}")
-                return jsonify({
-                    'error': 'Der Chatbot-Service ist derzeit nicht verfügbar. Bitte kontaktieren Sie die Praxis direkt.',
-                    'code': 'timeout'
-                }), 503
+                    'type': 'platform_help',
+                    'medical_advice': False,
+                    'response': assistant_message,
+                    'session_id': session_id,
+                    'disclaimer': 'Dies ist keine medizinische Beratung.'
+                }), 200
                 
+            finally:
+                # Restore proxy variables
+                for key, value in proxy_vars.items():
+                    os.environ[key] = value
+                    
         except Exception as e:
-            print(f"Failed to enqueue chatbot task: {e}")
+            print(f"❌ OpenAI API error: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({
-                'error': 'Ein unerwarteter Fehler ist aufgetreten',
-                'code': 'server_error'
-            }), 500
+                'error': 'Der Chatbot-Service ist derzeit nicht verfügbar. Bitte kontaktieren Sie die Praxis direkt.',
+                'code': 'openai_error'
+            }), 503
             
     except ValueError:
         return jsonify({'error': 'Ungültige Praxis-ID'}), 400
