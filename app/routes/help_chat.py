@@ -342,7 +342,8 @@ def help_chat():
                 model=os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview'),
                 messages=messages,
                 max_tokens=500,
-                temperature=0.7
+                temperature=0.7,
+                timeout=60  # 60 second timeout for OpenAI API
             )
             
             assistant_reply = response.choices[0].message.content

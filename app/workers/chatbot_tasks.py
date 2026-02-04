@@ -83,7 +83,8 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
                     {"role": "user", "content": message}
                 ],
                 temperature=0.7,
-                max_tokens=500
+                max_tokens=500,
+                timeout=60  # 60 second timeout for OpenAI API
             )
             
             assistant_message = response.choices[0].message.content
@@ -300,7 +301,8 @@ Beginne mit: "ℹ️ Dies ist keine medizinische Beratung."
                     {"role": "user", "content": message}
                 ],
                 temperature=0.7,
-                max_tokens=300
+                max_tokens=300,
+                timeout=60  # 60 second timeout for OpenAI API
             )
             
             assistant_message = response.choices[0].message.content

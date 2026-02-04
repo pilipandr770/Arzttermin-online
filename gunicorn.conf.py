@@ -12,8 +12,8 @@ worker_class = "sync"
 worker_connections = 1000
 max_requests = 1000
 max_requests_jitter = 50
-timeout = 30
-keepalive = 2
+timeout = 120  # Increased for OpenAI API calls (chatbot can take 30-60s)
+keepalive = 5  # Increased keepalive for long connections
 
 # Logging
 loglevel = os.getenv('LOG_LEVEL', 'info')
