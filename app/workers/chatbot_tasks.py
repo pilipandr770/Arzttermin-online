@@ -10,10 +10,14 @@ OpenAI API calls can be slow, so we handle them asynchronously.
 
 import openai
 import os
+import logging
 from app import db
 from app.models import Doctor, Practice
 from app.utils.chatbot_scope import validate_scope, ALLOWED_INTENTS
 from datetime import datetime
+
+# Configure logging for RQ worker
+logger = logging.getLogger(__name__)
 
 
 def process_chatbot_message(message, practice_id=None, doctor_id=None, session_id=None):
@@ -38,19 +42,19 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
     Returns:
         dict with structured response
     """
-    print(f"🚀 RQ WORKER: process_chatbot_message started - practice_id={practice_id}, session={session_id}")
-    print(f"🚀 Message: '{message[:50]}...'")
+    logger.info(f"🚀 RQ WORKER: process_chatbot_message started - practice_id={practice_id}, session={session_id}")
+    logger.info(f"🚀 Message: '{message[:50]}...'")
     
     from app import create_app
     app = create_app()
     
     with app.app_context():
-        print(f"🚀 App context created")
+        logger.info(f"🚀 App context created")
         
         # SCOPE VALIDATION - Block medical queries
         is_valid, reason, blocked_response = validate_scope(message)
         
-        print(f"🚀 Scope validation: valid={is_valid}, reason={reason if not is_valid else 'OK'}")
+        logger.info(f"🚀 Scope validation: valid={is_valid}, reason={reason if not is_valid else 'OK'}")
         
         if not is_valid:
             return {
@@ -67,17 +71,17 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
         practice = None
         doctor = None
         
-        print(f"🚀 Fetching practice/doctor context...")
+        logger.info(f"🚀 Fetching practice/doctor context...")
         
         if practice_id:
             practice = Practice.query.get(practice_id)
-            print(f"🚀 Practice loaded: {practice.name if practice else 'NOT FOUND'}")
+            logger.info(f"🚀 Practice loaded: {practice.name if practice else 'NOT FOUND'}")
         
         if doctor_id:
             doctor = Doctor.query.get(doctor_id)
             if doctor and doctor.practice:
                 practice = doctor.practice
-            print(f"🚀 Doctor loaded: {doctor.user.email if doctor else 'NOT FOUND'}")
+            logger.info(f"🚀 Doctor loaded: {doctor.user.email if doctor else 'NOT FOUND'}")
         
         # Build system prompt with HARD restrictions
         system_prompt = _build_gdpr_safe_system_prompt(practice, doctor)
@@ -86,11 +90,11 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
         try:
             openai_api_key = os.getenv('OPENAI_API_KEY')
             
-            print(f"🔍 Starting OpenAI API call for practice={practice.name if practice else 'None'}, session={session_id}")
-            print(f"🔍 API key present: {bool(openai_api_key)}, length: {len(openai_api_key) if openai_api_key else 0}")
+            logger.info(f"🔍 Starting OpenAI API call for practice={practice.name if practice else 'None'}, session={session_id}")
+            logger.info(f"🔍 API key present: {bool(openai_api_key)}, length={len(openai_api_key) if openai_api_key else 0}")
             
             if not openai_api_key:
-                print("❌ ERROR: OPENAI_API_KEY not configured!")
+                logger.error("❌ ERROR: OPENAI_API_KEY not configured!")
                 return {
                     'status': 'error',
                     'error': 'OpenAI API key not configured',
@@ -108,7 +112,7 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
             try:
                 # NO HISTORY - only current message
                 # Use OpenAI v1.x client syntax
-                print(f"🔍 Creating OpenAI client...")
+                logger.info(f"🔍 Creating OpenAI client...")
                 
                 import httpx
                 http_client = httpx.Client(
@@ -121,7 +125,7 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
                     http_client=http_client
                 )
                 
-                print(f"🔍 Calling OpenAI API (model=gpt-4, timeout=60s)...")
+                logger.info(f"🔍 Calling OpenAI API (model=gpt-4, timeout=60s)...")
                 response = client.chat.completions.create(
                     model="gpt-4",
                     messages=[
@@ -133,14 +137,14 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
                     timeout=60  # 60 second timeout for OpenAI API
                 )
                 
-                print(f"🔍 OpenAI API response received!")
+                logger.info(f"🔍 OpenAI API response received!")
                 assistant_message = response.choices[0].message.content
             finally:
                 # Restore proxy vars
                 for key, value in proxy_vars.items():
                     os.environ[key] = value
             
-            print(f"✅ Practice chatbot success: practice={practice.name if practice else 'None'}, response_length={len(assistant_message)}")
+            logger.info(f"✅ Practice chatbot success: practice={practice.name if practice else 'None'}, response_length={len(assistant_message)}")
             
             # Structured response
             return {
@@ -154,7 +158,7 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
             }
             
         except Exception as e:
-            print(f"❌ OpenAI API error: {e}")
+            logger.error(f"❌ OpenAI API error: {e}")
             import traceback
             traceback.print_exc()
             return {
