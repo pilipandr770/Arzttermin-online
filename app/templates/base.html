@@ -285,7 +285,7 @@
                 if (data.error) {
                     addHelpChatMessage('Entschuldigung, es gab einen Fehler. Bitte versuche es erneut.', 'assistant');
                 } else {
-                    addHelpChatMessage(data.reply, 'assistant');
+                    addHelpChatMessage(data.response, 'assistant');
                 }
             } catch (error) {
                 console.error('Help chat error:', error);

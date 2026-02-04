@@ -830,8 +830,8 @@ async function sendChatMessage() {
         
         if (response.ok) {
             const data = await response.json();
-            chatConversationId = data.conversation_id;
-            addChatMessage(data.reply, 'assistant');
+            chatConversationId = data.session_id;
+            addChatMessage(data.response, 'assistant');
         } else {
             const error = await response.json();
             addChatMessage(error.error || 'Entschuldigung, ein Fehler ist aufgetreten.', 'assistant', false, true);
