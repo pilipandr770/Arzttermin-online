@@ -38,12 +38,19 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
     Returns:
         dict with structured response
     """
+    print(f"🚀 RQ WORKER: process_chatbot_message started - practice_id={practice_id}, session={session_id}")
+    print(f"🚀 Message: '{message[:50]}...'")
+    
     from app import create_app
     app = create_app()
     
     with app.app_context():
+        print(f"🚀 App context created")
+        
         # SCOPE VALIDATION - Block medical queries
         is_valid, reason, blocked_response = validate_scope(message)
+        
+        print(f"🚀 Scope validation: valid={is_valid}, reason={reason if not is_valid else 'OK'}")
         
         if not is_valid:
             return {
@@ -60,12 +67,17 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
         practice = None
         doctor = None
         
+        print(f"🚀 Fetching practice/doctor context...")
+        
         if practice_id:
             practice = Practice.query.get(practice_id)
+            print(f"🚀 Practice loaded: {practice.name if practice else 'NOT FOUND'}")
         
         if doctor_id:
             doctor = Doctor.query.get(doctor_id)
             if doctor and doctor.practice:
+                practice = doctor.practice
+            print(f"🚀 Doctor loaded: {doctor.user.email if doctor else 'NOT FOUND'}")
                 practice = doctor.practice
         
         # Build system prompt with HARD restrictions
@@ -74,6 +86,9 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
         # Call OpenAI (stateless - no history)
         try:
             openai_api_key = os.getenv('OPENAI_API_KEY')
+            
+            print(f"🔍 Starting OpenAI API call for practice={practice.name if practice else 'None'}, session={session_id}")
+            print(f"🔍 API key present: {bool(openai_api_key)}, length: {len(openai_api_key) if openai_api_key else 0}")
             
             if not openai_api_key:
                 print("❌ ERROR: OPENAI_API_KEY not configured!")
@@ -84,21 +99,47 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
                     'medical_advice': False
                 }
             
-            # NO HISTORY - only current message
-            # Use OpenAI v1.x client syntax
-            client = openai.OpenAI(api_key=openai_api_key)
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": message}
-                ],
-                temperature=0.7,
-                max_tokens=500,
-                timeout=60  # 60 second timeout for OpenAI API
-            )
+            # ✅ RENDER.COM FIX: Remove proxy vars that block OpenAI API
+            proxy_vars = {}
+            for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']:
+                if key in os.environ:
+                    proxy_vars[key] = os.environ[key]
+                    del os.environ[key]
             
-            assistant_message = response.choices[0].message.content
+            try:
+                # NO HISTORY - only current message
+                # Use OpenAI v1.x client syntax
+                print(f"🔍 Creating OpenAI client...")
+                
+                import httpx
+                http_client = httpx.Client(
+                    timeout=60.0,
+                    follow_redirects=True
+                )
+                
+                client = openai.OpenAI(
+                    api_key=openai_api_key,
+                    http_client=http_client
+                )
+                
+                print(f"🔍 Calling OpenAI API (model=gpt-4, timeout=60s)...")
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": message}
+                    ],
+                    temperature=0.7,
+                    max_tokens=500,
+                    timeout=60  # 60 second timeout for OpenAI API
+                )
+                
+                print(f"🔍 OpenAI API response received!")
+                assistant_message = response.choices[0].message.content
+            finally:
+                # Restore proxy vars
+                for key, value in proxy_vars.items():
+                    os.environ[key] = value
             
             print(f"✅ Practice chatbot success: practice={practice.name if practice else 'None'}, response_length={len(assistant_message)}")
             
