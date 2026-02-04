@@ -1,0 +1,79 @@
+{% extends "admin/base.html" %}
+{% set hide_sidebar = True %}
+{% set hide_topbar = True %}
+
+{% block title %}Admin Login{% endblock %}
+
+{% block content %}
+<div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div style="width: 100%; max-width: 400px; padding: 20px;">
+        <div class="admin-card" style="padding: 40px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <i class="bi bi-shield-lock" style="font-size: 48px; color: var(--admin-primary);"></i>
+                <h3 style="margin-top: 15px; color: var(--admin-primary);">Admin Panel</h3>
+                <p style="color: #7f8c8d;">TerminFinder</p>
+            </div>
+            
+            <form id="admin-login-form">
+                <div class="mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" required>
+                </div>
+                
+                <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+                
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                </button>
+            </form>
+            
+            <div style="text-align: center; margin-top: 20px; font-size: 14px; color: #7f8c8d;">
+                Restricted Access Only
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('admin-login-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('error-message');
+    
+    errorDiv.style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            localStorage.setItem('admin_token', data.access_token);
+            localStorage.setItem('admin_user', JSON.stringify(data.admin));
+            window.location.href = '/admin/dashboard';
+        } else {
+            errorDiv.textContent = data.error || 'Login failed';
+            errorDiv.style.display = 'block';
+        }
+    } catch (error) {
+        errorDiv.textContent = 'Network error';
+        errorDiv.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}

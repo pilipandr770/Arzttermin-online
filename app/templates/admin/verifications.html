@@ -1,0 +1,308 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Верификация врачей{% endblock %}
+{% block page_title %}Управление верификацией врачей{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="admin-card stat-card">
+            <i class="bi bi-hourglass-split" style="font-size: 36px; color: var(--admin-warning);"></i>
+            <div class="stat-number" id="pending-count">0</div>
+            <div class="stat-label">Ожидают проверки</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="admin-card stat-card">
+            <i class="bi bi-check-circle" style="font-size: 36px; color: var(--admin-success);"></i>
+            <div class="stat-number" id="verified-count">0</div>
+            <div class="stat-label">Верифицировано</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="admin-card stat-card">
+            <i class="bi bi-x-circle" style="font-size: 36px; color: var(--admin-danger);"></i>
+            <div class="stat-number" id="rejected-count">0</div>
+            <div class="stat-label">Отклонено</div>
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5>Очередь верификации</h5>
+        <div>
+            <select class="form-select form-select-sm" style="width: auto;" id="status-filter">
+                <option value="unverified">Ожидают проверки</option>
+                <option value="verified">Верифицированные</option>
+                <option value="all">Все</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Врач</th>
+                    <th>Специализация</th>
+                    <th>Email</th>
+                    <th>Телефон</th>
+                    <th>Дата регистрации</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody id="doctors-tbody">
+                <tr>
+                    <td colspan="7" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Verification Modal -->
+<div class="modal fade" id="verificationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Верификация врача</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="doctor-details">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>ФИО:</strong>
+                            <p id="doctor-name"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Специализация:</strong>
+                            <p id="doctor-spec"></p>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Email:</strong>
+                            <p id="doctor-email"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Телефон:</strong>
+                            <p id="doctor-phone"></p>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <strong>О враче:</strong>
+                            <p id="doctor-bio"></p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <strong>Образование:</strong>
+                            <p id="doctor-education"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="mb-3">
+                    <label class="form-label"><strong>Примечания администратора</strong></label>
+                    <textarea class="form-control" id="admin-notes" rows="3" placeholder="Комментарий к решению..."></textarea>
+                </div>
+                
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="verify-checkbox">
+                    <label class="form-check-label" for="verify-checkbox">
+                        <strong>Верифицировать врача</strong>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-success" id="approve-btn">
+                    <i class="bi bi-check-circle"></i> Одобрить
+                </button>
+                <button type="button" class="btn btn-danger" id="reject-btn">
+                    <i class="bi bi-x-circle"></i> Отклонить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentDoctorId = null;
+
+async function loadVerificationStats() {
+    const token = localStorage.getItem('admin_token');
+    
+    try {
+        const response = await fetch('/api/admin/dashboard/stats', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to load stats');
+        
+        const data = await response.json();
+        
+        document.getElementById('pending-count').textContent = data.verification.unverified_doctors;
+        document.getElementById('verified-count').textContent = data.verification.verified_doctors;
+        document.getElementById('rejected-count').textContent = '0'; // TODO: add rejected count
+        
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
+}
+
+async function loadDoctors(filter = 'unverified') {
+    const token = localStorage.getItem('admin_token');
+    let url = '/api/admin/doctors?page=1&per_page=50';
+    
+    if (filter === 'verified') {
+        url += '&verified=true';
+    } else if (filter === 'unverified') {
+        url += '&verified=false';
+    }
+    
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 403) {
+                window.location.href = '/admin/login';
+            }
+            throw new Error('Failed to load doctors');
+        }
+        
+        const data = await response.json();
+        
+        const tbody = document.getElementById('doctors-tbody');
+        tbody.innerHTML = '';
+        
+        if (data.doctors.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">Врачи не найдены</td></tr>';
+            return;
+        }
+        
+        data.doctors.forEach(doctor => {
+            const row = document.createElement('tr');
+            const createdDate = new Date(doctor.created_at).toLocaleDateString('ru-RU');
+            const statusBadge = doctor.is_verified 
+                ? '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Верифицирован</span>'
+                : '<span class="badge bg-warning"><i class="bi bi-hourglass-split"></i> Ожидает</span>';
+            
+            row.innerHTML = `
+                <td><strong>${doctor.first_name} ${doctor.last_name}</strong></td>
+                <td>${doctor.specialization || '-'}</td>
+                <td>${doctor.email}</td>
+                <td>${doctor.phone || '-'}</td>
+                <td>${createdDate}</td>
+                <td>${statusBadge}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="showVerificationModal('${doctor.id}')" title="Проверить">
+                        <i class="bi bi-eye"></i> Проверить
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+    } catch (error) {
+        console.error('Error loading doctors:', error);
+        const tbody = document.getElementById('doctors-tbody');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Ошибка загрузки данных</td></tr>';
+    }
+}
+
+async function showVerificationModal(doctorId) {
+    currentDoctorId = doctorId;
+    const token = localStorage.getItem('admin_token');
+    
+    try {
+        const response = await fetch(`/api/admin/doctors/${doctorId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to load doctor');
+        
+        const doctor = await response.json();
+        
+        document.getElementById('doctor-name').textContent = `${doctor.first_name} ${doctor.last_name}`;
+        document.getElementById('doctor-spec').textContent = doctor.specialization || 'Не указано';
+        document.getElementById('doctor-email').textContent = doctor.email;
+        document.getElementById('doctor-phone').textContent = doctor.phone || 'Не указан';
+        document.getElementById('doctor-bio').textContent = doctor.bio || 'Не указано';
+        document.getElementById('doctor-education').textContent = doctor.education || 'Не указано';
+        document.getElementById('verify-checkbox').checked = doctor.is_verified;
+        
+        new bootstrap.Modal(document.getElementById('verificationModal')).show();
+        
+    } catch (error) {
+        console.error('Error loading doctor details:', error);
+        alert('Ошибка загрузки данных врача');
+    }
+}
+
+async function verifyDoctor(approved) {
+    const token = localStorage.getItem('admin_token');
+    const notes = document.getElementById('admin-notes').value;
+    
+    try {
+        const response = await fetch(`/api/admin/doctors/${currentDoctorId}/verify`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                verified: approved,
+                notes: notes
+            })
+        });
+        
+        if (!response.ok) throw new Error('Failed to verify doctor');
+        
+        bootstrap.Modal.getInstance(document.getElementById('verificationModal')).hide();
+        
+        const filter = document.getElementById('status-filter').value;
+        loadDoctors(filter);
+        loadVerificationStats();
+        
+    } catch (error) {
+        console.error('Error verifying doctor:', error);
+        alert('Ошибка при верификации');
+    }
+}
+
+// Event listeners
+document.getElementById('status-filter').addEventListener('change', (e) => {
+    loadDoctors(e.target.value);
+});
+
+document.getElementById('approve-btn').addEventListener('click', () => verifyDoctor(true));
+document.getElementById('reject-btn').addEventListener('click', () => verifyDoctor(false));
+
+// Load data on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadVerificationStats();
+    loadDoctors('unverified');
+});
+</script>
+{% endblock %}

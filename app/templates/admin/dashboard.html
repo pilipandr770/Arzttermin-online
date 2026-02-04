@@ -1,0 +1,166 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard - Overview{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="admin-card stat-card">
+            <i class="bi bi-people" style="font-size: 36px; color: var(--admin-accent);"></i>
+            <div class="stat-number" id="stat-patients">-</div>
+            <div class="stat-label">Пациенты</div>
+            <small class="text-muted" id="stat-new-patients">+0 за 30 дней</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-card stat-card">
+            <i class="bi bi-person-badge" style="font-size: 36px; color: var(--admin-success);"></i>
+            <div class="stat-number" id="stat-doctors">-</div>
+            <div class="stat-label">Врачи</div>
+            <small class="text-muted" id="stat-new-doctors">+0 за 30 дней</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-card stat-card">
+            <i class="bi bi-calendar-check" style="font-size: 36px; color: var(--admin-warning);"></i>
+            <div class="stat-number" id="stat-bookings">-</div>
+            <div class="stat-label">Бронирования</div>
+            <small class="text-muted" id="stat-active-bookings">0 активных</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-card stat-card">
+            <i class="bi bi-clock-history" style="font-size: 36px; color: var(--admin-primary);"></i>
+            <div class="stat-number" id="stat-slots">-</div>
+            <div class="stat-label">Доступные слоты</div>
+            <small class="text-muted">Всего в системе</small>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="admin-card">
+            <h5><i class="bi bi-graph-up"></i> Бронирования</h5>
+            <hr>
+            <div class="row text-center">
+                <div class="col-4">
+                    <div style="font-size: 24px; font-weight: bold; color: var(--admin-success);" id="booking-completed">0</div>
+                    <div style="color: #7f8c8d; font-size: 14px;">Завершено</div>
+                </div>
+                <div class="col-4">
+                    <div style="font-size: 24px; font-weight: bold; color: var(--admin-accent);" id="booking-active">0</div>
+                    <div style="color: #7f8c8d; font-size: 14px;">Активные</div>
+                </div>
+                <div class="col-4">
+                    <div style="font-size: 24px; font-weight: bold; color: var(--admin-danger);" id="booking-cancelled">0</div>
+                    <div style="color: #7f8c8d; font-size: 14px;">Отменено</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="admin-card">
+            <h5><i class="bi bi-patch-check"></i> Верификация</h5>
+            <hr>
+            <div class="row text-center">
+                <div class="col-6">
+                    <div style="font-size: 24px; font-weight: bold; color: var(--admin-success);" id="verified-doctors">0</div>
+                    <div style="color: #7f8c8d; font-size: 14px;">Верифицировано</div>
+                </div>
+                <div class="col-6">
+                    <div style="font-size: 24px; font-weight: bold; color: var(--admin-warning);" id="unverified-doctors">0</div>
+                    <div style="color: #7f8c8d; font-size: 14px;">Ожидает верификации</div>
+                </div>
+            </div>
+            <a href="/admin/verifications" class="btn btn-sm btn-outline-primary mt-3 w-100">
+                Управление верификацией
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="admin-card">
+            <h5><i class="bi bi-speedometer2"></i> Быстрые действия</h5>
+            <hr>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/admin/users/patients" class="btn btn-outline-primary">
+                    <i class="bi bi-people"></i> Все пациенты
+                </a>
+                <a href="/admin/users/doctors" class="btn btn-outline-success">
+                    <i class="bi bi-person-badge"></i> Все врачи
+                </a>
+                <a href="/admin/bookings" class="btn btn-outline-warning">
+                    <i class="bi bi-calendar-check"></i> Все бронирования
+                </a>
+                <a href="/admin/analytics" class="btn btn-outline-info">
+                    <i class="bi bi-graph-up"></i> Аналитика
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadDashboardStats() {
+    const token = localStorage.getItem('admin_token');
+    
+    try {
+        const response = await fetch('/api/admin/dashboard/stats', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 403) {
+                window.location.href = '/admin/login';
+            }
+            throw new Error('Failed to load stats');
+        }
+        
+        const data = await response.json();
+        
+        // Update user stats
+        document.getElementById('stat-patients').textContent = data.users.total_patients;
+        document.getElementById('stat-new-patients').textContent = `+${data.users.new_patients_30d} за 30 дней`;
+        
+        document.getElementById('stat-doctors').textContent = data.users.total_doctors;
+        document.getElementById('stat-new-doctors').textContent = `+${data.users.new_doctors_30d} за 30 дней`;
+        
+        // Update booking stats
+        document.getElementById('stat-bookings').textContent = data.bookings.total;
+        document.getElementById('stat-active-bookings').textContent = `${data.bookings.active} активных`;
+        
+        document.getElementById('booking-completed').textContent = data.bookings.completed;
+        document.getElementById('booking-active').textContent = data.bookings.active;
+        document.getElementById('booking-cancelled').textContent = data.bookings.cancelled;
+        
+        // Update verification stats
+        document.getElementById('verified-doctors').textContent = data.verification.verified_doctors;
+        document.getElementById('unverified-doctors').textContent = data.verification.unverified_doctors;
+        
+        // Update slots
+        document.getElementById('stat-slots').textContent = data.slots.available;
+        
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
+}
+
+// Load stats on page load
+document.addEventListener('DOMContentLoaded', loadDashboardStats);
+
+// Update admin username in topbar
+const adminUser = JSON.parse(localStorage.getItem('admin_user') || '{}');
+if (adminUser.username) {
+    document.getElementById('admin-username').textContent = adminUser.username;
+}
+</script>
+{% endblock %}

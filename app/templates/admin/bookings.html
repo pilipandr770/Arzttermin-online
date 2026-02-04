@@ -1,0 +1,260 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Бронирования{% endblock %}
+{% block page_title %}Управление бронированиями{% endblock %}
+
+{% block content %}
+<div class="admin-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="input-group" style="max-width: 400px;">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="search-input" placeholder="Поиск по пациенту, врачу...">
+        </div>
+        <div>
+            <select class="form-select form-select-sm" style="width: auto; display: inline-block;" id="status-filter">
+                <option value="">Все статусы</option>
+                <option value="confirmed">Подтверждено</option>
+                <option value="completed">Завершено</option>
+                <option value="cancelled">Отменено</option>
+                <option value="no_show">Не пришел</option>
+            </select>
+            <span class="badge bg-secondary ms-2" id="total-count">0 бронирований</span>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Пациент</th>
+                    <th>Врач</th>
+                    <th>Дата и время</th>
+                    <th>Статус</th>
+                    <th>Создано</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody id="bookings-tbody">
+                <tr>
+                    <td colspan="7" class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <nav>
+        <ul class="pagination justify-content-center" id="pagination">
+        </ul>
+    </nav>
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Отмена бронирования</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите отменить это бронирование?</p>
+                <div class="mb-3">
+                    <label class="form-label">Причина отмены</label>
+                    <textarea class="form-control" id="cancel-reason" rows="3" placeholder="Укажите причину..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-danger" id="confirm-cancel-btn">Отменить бронирование</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentPage = 1;
+let currentSearch = '';
+let currentFilter = '';
+let cancelBookingId = null;
+
+async function loadBookings(page = 1, search = '', status = '') {
+    currentPage = page;
+    currentSearch = search;
+    currentFilter = status;
+    
+    const token = localStorage.getItem('admin_token');
+    let url = `/api/admin/bookings?page=${page}&per_page=20`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (status) url += `&status=${status}`;
+    
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 403) {
+                window.location.href = '/admin/login';
+            }
+            throw new Error('Failed to load bookings');
+        }
+        
+        const data = await response.json();
+        
+        document.getElementById('total-count').textContent = `${data.total} бронирований`;
+        
+        const tbody = document.getElementById('bookings-tbody');
+        tbody.innerHTML = '';
+        
+        if (data.bookings.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">Бронирования не найдены</td></tr>';
+            return;
+        }
+        
+        data.bookings.forEach(booking => {
+            const row = document.createElement('tr');
+            const createdDate = new Date(booking.created_at).toLocaleDateString('ru-RU');
+            const appointmentDate = new Date(booking.appointment_date).toLocaleDateString('ru-RU', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const statusBadges = {
+                'confirmed': '<span class="badge bg-success">Подтверждено</span>',
+                'completed': '<span class="badge bg-info">Завершено</span>',
+                'cancelled': '<span class="badge bg-danger">Отменено</span>',
+                'no_show': '<span class="badge bg-warning">Не пришел</span>'
+            };
+            
+            row.innerHTML = `
+                <td><small>${booking.id.substring(0, 8)}...</small></td>
+                <td><strong>${booking.patient_name || 'N/A'}</strong></td>
+                <td>${booking.doctor_name || 'N/A'}</td>
+                <td>${appointmentDate}</td>
+                <td>${statusBadges[booking.status] || booking.status}</td>
+                <td>${createdDate}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewBooking('${booking.id}')" title="Просмотр">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    ${booking.status === 'confirmed' ? `
+                    <button class="btn btn-sm btn-outline-danger" onclick="confirmCancel('${booking.id}')" title="Отменить">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                    ` : ''}
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+        
+        updatePagination(data.pages, data.page);
+        
+    } catch (error) {
+        console.error('Error loading bookings:', error);
+        const tbody = document.getElementById('bookings-tbody');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Ошибка загрузки данных</td></tr>';
+    }
+}
+
+function updatePagination(totalPages, currentPage) {
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+    
+    if (totalPages <= 1) return;
+    
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="loadBookings(${currentPage - 1}, '${currentSearch}', '${currentFilter}'); return false;">Назад</a>`;
+    pagination.appendChild(prevLi);
+    
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" onclick="loadBookings(${i}, '${currentSearch}', '${currentFilter}'); return false;">${i}</a>`;
+            pagination.appendChild(li);
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            const li = document.createElement('li');
+            li.className = 'page-item disabled';
+            li.innerHTML = '<span class="page-link">...</span>';
+            pagination.appendChild(li);
+        }
+    }
+    
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="loadBookings(${currentPage + 1}, '${currentSearch}', '${currentFilter}'); return false;">Вперед</a>`;
+    pagination.appendChild(nextLi);
+}
+
+function viewBooking(bookingId) {
+    // TODO: Открыть модальное окно с деталями бронирования
+    alert('Детальный просмотр в разработке');
+}
+
+function confirmCancel(bookingId) {
+    cancelBookingId = bookingId;
+    new bootstrap.Modal(document.getElementById('cancelModal')).show();
+}
+
+async function cancelBooking() {
+    const token = localStorage.getItem('admin_token');
+    const reason = document.getElementById('cancel-reason').value;
+    
+    try {
+        const response = await fetch(`/api/admin/bookings/${cancelBookingId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ reason: reason })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to cancel booking');
+        }
+        
+        bootstrap.Modal.getInstance(document.getElementById('cancelModal')).hide();
+        document.getElementById('cancel-reason').value = '';
+        loadBookings(currentPage, currentSearch, currentFilter);
+        
+    } catch (error) {
+        console.error('Error cancelling booking:', error);
+        alert('Ошибка при отмене бронирования');
+    }
+}
+
+// Search with debounce
+let searchTimeout;
+document.getElementById('search-input').addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        loadBookings(1, e.target.value, currentFilter);
+    }, 500);
+});
+
+// Status filter
+document.getElementById('status-filter').addEventListener('change', (e) => {
+    loadBookings(1, currentSearch, e.target.value);
+});
+
+// Cancel confirmation
+document.getElementById('confirm-cancel-btn').addEventListener('click', cancelBooking);
+
+// Load bookings on page load
+document.addEventListener('DOMContentLoaded', () => loadBookings());
+</script>
+{% endblock %}

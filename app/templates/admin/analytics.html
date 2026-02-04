@@ -1,0 +1,340 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Аналитика{% endblock %}
+{% block page_title %}Аналитика и отчеты{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="admin-card">
+            <h5><i class="bi bi-calendar-range"></i> Период анализа</h5>
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">От</label>
+                    <input type="date" class="form-control" id="date-from">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">До</label>
+                    <input type="date" class="form-control" id="date-to">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100" onclick="loadAnalytics()">
+                        <i class="bi bi-search"></i> Применить
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <select class="form-select" id="quick-period" onchange="setQuickPeriod()">
+                        <option value="">Быстрый выбор</option>
+                        <option value="7">Последние 7 дней</option>
+                        <option value="30">Последние 30 дней</option>
+                        <option value="90">Последние 3 месяца</option>
+                        <option value="365">Последний год</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="admin-card stat-card">
+            <i class="bi bi-people" style="font-size: 36px; color: var(--admin-accent);"></i>
+            <div class="stat-number" id="total-users">0</div>
+            <div class="stat-label">Всего пользователей</div>
+            <small class="text-muted" id="users-change">+0% за период</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-card stat-card">
+            <i class="bi bi-calendar-check" style="font-size: 36px; color: var(--admin-success);"></i>
+            <div class="stat-number" id="total-bookings">0</div>
+            <div class="stat-label">Всего бронирований</div>
+            <small class="text-muted" id="bookings-change">+0% за период</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-card stat-card">
+            <i class="bi bi-check-circle" style="font-size: 36px; color: var(--admin-primary);"></i>
+            <div class="stat-number" id="completed-bookings">0</div>
+            <div class="stat-label">Завершено приемов</div>
+            <small class="text-muted" id="completion-rate">0% завершения</small>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="admin-card stat-card">
+            <i class="bi bi-person-badge" style="font-size: 36px; color: var(--admin-warning);"></i>
+            <div class="stat-number" id="active-doctors">0</div>
+            <div class="stat-label">Активные врачи</div>
+            <small class="text-muted">С бронированиями</small>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="admin-card">
+            <h5><i class="bi bi-graph-up"></i> Регистрации пользователей</h5>
+            <hr>
+            <div style="height: 250px; position: relative;">
+                <canvas id="registrationsChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="admin-card">
+            <h5><i class="bi bi-calendar-event"></i> Динамика бронирований</h5>
+            <hr>
+            <div style="height: 250px; position: relative;">
+                <canvas id="bookingsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="admin-card">
+            <h5><i class="bi bi-pie-chart"></i> Распределение по специализациям</h5>
+            <hr>
+            <div style="height: 250px; position: relative;">
+                <canvas id="specializationsChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="admin-card">
+            <h5><i class="bi bi-bar-chart"></i> Топ-10 врачей по бронированиям</h5>
+            <hr>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Врач</th>
+                            <th>Специализация</th>
+                            <th>Бронирований</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top-doctors">
+                        <tr>
+                            <td colspan="4" class="text-center">Загрузка...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="admin-card">
+            <h5><i class="bi bi-clock-history"></i> Популярные часы бронирования</h5>
+            <hr>
+            <div style="height: 200px; position: relative;">
+                <canvas id="hoursChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let charts = {};
+
+function setQuickPeriod() {
+    const days = parseInt(document.getElementById('quick-period').value);
+    if (!days) return;
+    
+    const today = new Date();
+    const past = new Date();
+    past.setDate(today.getDate() - days);
+    
+    document.getElementById('date-from').value = past.toISOString().split('T')[0];
+    document.getElementById('date-to').value = today.toISOString().split('T')[0];
+    
+    loadAnalytics();
+}
+
+async function loadAnalytics() {
+    const token = localStorage.getItem('admin_token');
+    const dateFrom = document.getElementById('date-from').value;
+    const dateTo = document.getElementById('date-to').value;
+    
+    try {
+        // Load dashboard stats
+        const statsResponse = await fetch('/api/admin/dashboard/stats', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!statsResponse.ok) {
+            if (statsResponse.status === 403) {
+                window.location.href = '/admin/login';
+            }
+            throw new Error('Failed to load analytics');
+        }
+        
+        const stats = await statsResponse.json();
+        
+        // Update summary cards
+        document.getElementById('total-users').textContent = 
+            stats.users.total_patients + stats.users.total_doctors;
+        document.getElementById('total-bookings').textContent = stats.bookings.total;
+        document.getElementById('completed-bookings').textContent = stats.bookings.completed;
+        document.getElementById('active-doctors').textContent = stats.users.total_doctors;
+        
+        const completionRate = stats.bookings.total > 0 
+            ? Math.round((stats.bookings.completed / stats.bookings.total) * 100) 
+            : 0;
+        document.getElementById('completion-rate').textContent = `${completionRate}% завершения`;
+        
+        // Initialize charts with mock data (replace with real API calls)
+        initRegistrationsChart();
+        initBookingsChart();
+        initSpecializationsChart();
+        initHoursChart();
+        loadTopDoctors();
+        
+    } catch (error) {
+        console.error('Error loading analytics:', error);
+        alert('Ошибка загрузки аналитики');
+    }
+}
+
+function initRegistrationsChart() {
+    const ctx = document.getElementById('registrationsChart');
+    
+    if (charts.registrations) {
+        charts.registrations.destroy();
+    }
+    
+    charts.registrations = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+            datasets: [{
+                label: 'Пациенты',
+                data: [12, 19, 15, 25, 22, 18, 20],
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }, {
+                label: 'Врачи',
+                data: [2, 3, 2, 5, 4, 3, 4],
+                borderColor: 'rgb(255, 99, 132)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+function initBookingsChart() {
+    const ctx = document.getElementById('bookingsChart');
+    
+    if (charts.bookings) {
+        charts.bookings.destroy();
+    }
+    
+    charts.bookings = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+            datasets: [{
+                label: 'Бронирования',
+                data: [45, 59, 80, 81, 56, 55, 40],
+                backgroundColor: 'rgba(54, 162, 235, 0.5)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+function initSpecializationsChart() {
+    const ctx = document.getElementById('specializationsChart');
+    
+    if (charts.specializations) {
+        charts.specializations.destroy();
+    }
+    
+    charts.specializations = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Терапевт', 'Педиатр', 'Стоматолог', 'Кардиолог', 'Другие'],
+            datasets: [{
+                data: [30, 25, 20, 15, 10],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.5)',
+                    'rgba(54, 162, 235, 0.5)',
+                    'rgba(255, 206, 86, 0.5)',
+                    'rgba(75, 192, 192, 0.5)',
+                    'rgba(153, 102, 255, 0.5)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+function initHoursChart() {
+    const ctx = document.getElementById('hoursChart');
+    
+    if (charts.hours) {
+        charts.hours.destroy();
+    }
+    
+    charts.hours = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['8:00', '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'],
+            datasets: [{
+                label: 'Бронирования',
+                data: [5, 12, 18, 25, 30, 20, 28, 32, 25, 15, 8],
+                backgroundColor: 'rgba(153, 102, 255, 0.5)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+async function loadTopDoctors() {
+    // Mock data - replace with real API
+    const tbody = document.getElementById('top-doctors');
+    tbody.innerHTML = `
+        <tr><td>1</td><td>Іваненко І.П.</td><td>Терапевт</td><td><span class="badge bg-success">42</span></td></tr>
+        <tr><td>2</td><td>Петренко П.С.</td><td>Педиатр</td><td><span class="badge bg-success">38</span></td></tr>
+        <tr><td>3</td><td>Сидоренко С.М.</td><td>Стоматолог</td><td><span class="badge bg-success">35</span></td></tr>
+        <tr><td>4</td><td>Коваленко К.В.</td><td>Кардиолог</td><td><span class="badge bg-info">28</span></td></tr>
+        <tr><td>5</td><td>Шевченко Ш.А.</td><td>Терапевт</td><td><span class="badge bg-info">25</span></td></tr>
+    `;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date();
+    const past = new Date();
+    past.setDate(today.getDate() - 30);
+    
+    document.getElementById('date-from').value = past.toISOString().split('T')[0];
+    document.getElementById('date-to').value = today.toISOString().split('T')[0];
+    
+    loadAnalytics();
+});
+</script>
+{% endblock %}
