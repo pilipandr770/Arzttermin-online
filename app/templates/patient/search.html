@@ -1630,6 +1630,14 @@ function formatDate(dateStr) {
 
 // Создать алерт по критериям поиска (когда результатов нет)
 async function createSearchAlert() {
+    // Check if user is logged in
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        alert('Bitte melden Sie sich an, um Benachrichtigungen einzurichten.\n\nSie werden zur Anmeldeseite weitergeleitet...');
+        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+        return;
+    }
+    
     const speciality = document.getElementById('search-speciality').value;
     const city = document.getElementById('search-city').value;
     
@@ -1681,6 +1689,14 @@ async function createSearchAlert() {
 
 // Создать алерт для конкретного врача
 async function createAlert(doctorId, doctorName, speciality) {
+    // Check if user is logged in
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        alert('Bitte melden Sie sich an, um Benachrichtigungen einzurichten.\n\nSie werden zur Anmeldeseite weitergeleitet...');
+        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+        return;
+    }
+    
     if (!confirm(`Möchten Sie eine Benachrichtigung einrichten für: ${doctorName}?\n\nSie werden informiert, wenn ein neuer Termin verfügbar wird.`)) {
         return;
     }
