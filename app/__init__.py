@@ -7,7 +7,6 @@ from flask_migrate import Migrate
 from flask_mail import Mail
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from celery import Celery
 from config import config
 import click
 
@@ -16,7 +15,6 @@ db = SQLAlchemy()
 migrate = Migrate()
 mail = Mail()
 jwt = JWTManager()
-celery = Celery(__name__)
 
 
 def create_app(config_name='default'):
