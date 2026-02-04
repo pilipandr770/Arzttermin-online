@@ -73,9 +73,9 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
         
         # Call OpenAI (stateless - no history)
         try:
-            openai.api_key = os.getenv('OPENAI_API_KEY')
+            openai_api_key = os.getenv('OPENAI_API_KEY')
             
-            if not openai.api_key:
+            if not openai_api_key:
                 print("❌ ERROR: OPENAI_API_KEY not configured!")
                 return {
                     'status': 'error',
@@ -85,7 +85,9 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
                 }
             
             # NO HISTORY - only current message
-            response = openai.ChatCompletion.create(
+            # Use OpenAI v1.x client syntax
+            client = openai.OpenAI(api_key=openai_api_key)
+            response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": system_prompt},
