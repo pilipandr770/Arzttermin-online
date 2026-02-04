@@ -274,9 +274,25 @@
         if (!window.location.pathname.includes('/admin/login')) {
             const token = localStorage.getItem('admin_token');
             if (!token) {
+                // Показуємо повідомлення і перенаправляємо
+                alert('Сеанс завершено. Будь ласка, увійдіть знову.');
                 window.location.href = '/admin/login';
             }
         }
+        
+        // Global fetch wrapper to handle 401 errors
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            return originalFetch.apply(this, args)
+                .then(response => {
+                    if (response.status === 401 && !window.location.pathname.includes('/admin/login')) {
+                        localStorage.removeItem('admin_token');
+                        alert('Сеанс завершено. Будь ласка, увійдіть знову.');
+                        window.location.href = '/admin/login';
+                    }
+                    return response;
+                });
+        };
     </script>
     {% block extra_js %}{% endblock %}
 </body>

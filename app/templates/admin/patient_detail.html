@@ -1,0 +1,196 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Деталі пацієнта{% endblock %}
+{% block page_title %}
+    <a href="/admin/users/patients" class="text-decoration-none text-muted">
+        <i class="bi bi-arrow-left"></i> Назад до списку
+    </a>
+    <span class="ms-2">Деталі пацієнта</span>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="admin-card">
+            <h5><i class="bi bi-person-circle"></i> Інформація про пацієнта</h5>
+            <hr>
+            <div id="patient-info">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Завантаження...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card mt-3">
+            <h5><i class="bi bi-graph-up"></i> Статистика</h5>
+            <hr>
+            <div id="patient-stats">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Завантаження...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="admin-card">
+            <h5><i class="bi bi-calendar-check"></i> Історія бронювань</h5>
+            <hr>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Лікар</th>
+                            <th>Статус</th>
+                            <th>Сума</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookings-table">
+                        <tr>
+                            <td colspan="4" class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Завантаження...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const patientId = '{{ patient_id }}';
+
+async function loadPatientDetails() {
+    const token = localStorage.getItem('admin_token');
+    
+    try {
+        const response = await fetch(`/api/admin/patients/${patientId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load patient details');
+        }
+        
+        const patient = await response.json();
+        
+        // Відображаємо інформацію про пацієнта
+        document.getElementById('patient-info').innerHTML = `
+            <div class="mb-3">
+                <small class="text-muted">ID</small>
+                <div><code>${patient.id.substring(0, 8)}...</code></div>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Телефон</small>
+                <div><strong>${patient.phone}</strong></div>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Ім'я</small>
+                <div>${patient.name || 'Не вказано'}</div>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Дата реєстрації</small>
+                <div>${patient.created_at ? new Date(patient.created_at).toLocaleDateString('uk-UA') : 'Невідомо'}</div>
+            </div>
+        `;
+        
+        // Статистика
+        document.getElementById('patient-stats').innerHTML = `
+            <div class="row text-center">
+                <div class="col-6 mb-3">
+                    <div class="h3 mb-0">${patient.total_bookings || 0}</div>
+                    <small class="text-muted">Всього бронювань</small>
+                </div>
+                <div class="col-6 mb-3">
+                    <div class="h3 mb-0">${patient.no_show_count || 0}</div>
+                    <small class="text-muted">Не з'явився</small>
+                </div>
+                <div class="col-6">
+                    <div class="h3 mb-0">${patient.late_cancellations || 0}</div>
+                    <small class="text-muted">Пізнє скасування</small>
+                </div>
+                <div class="col-6">
+                    <div class="h3 mb-0">${patient.attended_appointments || 0}</div>
+                    <small class="text-muted">Відвідано</small>
+                </div>
+            </div>
+        `;
+        
+        // Завантажуємо історію бронювань
+        loadBookings();
+        
+    } catch (error) {
+        console.error('Error loading patient details:', error);
+        document.getElementById('patient-info').innerHTML = 
+            '<div class="alert alert-danger">Помилка завантаження даних</div>';
+    }
+}
+
+async function loadBookings() {
+    const token = localStorage.getItem('admin_token');
+    
+    try {
+        const response = await fetch(`/api/admin/patients/${patientId}/bookings`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load bookings');
+        }
+        
+        const bookings = await response.json();
+        const tbody = document.getElementById('bookings-table');
+        
+        if (bookings.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">Немає бронювань</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = bookings.map(booking => {
+            const date = new Date(booking.date).toLocaleDateString('uk-UA', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            const statusBadge = {
+                'confirmed': '<span class="badge bg-primary">Підтверджено</span>',
+                'completed': '<span class="badge bg-success">Завершено</span>',
+                'cancelled': '<span class="badge bg-secondary">Скасовано</span>',
+                'no_show': '<span class="badge bg-warning">Не з\'явився</span>'
+            };
+            
+            return `
+                <tr>
+                    <td>${date}</td>
+                    <td>${booking.doctor_name || 'Невідомо'}</td>
+                    <td>${statusBadge[booking.status] || booking.status}</td>
+                    <td>€${booking.amount_paid || '0.00'}</td>
+                </tr>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error loading bookings:', error);
+        document.getElementById('bookings-table').innerHTML = 
+            '<tr><td colspan="4" class="text-center text-danger">Помилка завантаження бронювань</td></tr>';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadPatientDetails);
+</script>
+{% endblock %}

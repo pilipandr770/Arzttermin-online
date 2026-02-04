@@ -57,17 +57,31 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Подтверждение удаления</h5>
+                <h5 class="modal-title">Підтвердження видалення</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                Вы уверены, что хотите удалить врача <strong id="delete-doctor-name"></strong>?
-                <br><br>
-                <small class="text-muted">Все связанные данные (слоты, бронирования, практики) будут удалены.</small>
+                <div id="delete-warning">
+                    Ви впевнені, що хочете видалити лікаря <strong id="delete-doctor-name"></strong>?
+                    <br><br>
+                    <small class="text-muted">Цю дію не можна скасувати.</small>
+                </div>
+                <div id="force-delete-section" style="display: none;">
+                    <div class="alert alert-warning mt-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        У лікаря є <strong id="active-bookings-count">0</strong> активних бронювань.
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="force-delete-checkbox">
+                        <label class="form-check-label text-danger" for="force-delete-checkbox">
+                            <strong>Примусово видалити</strong> разом з усіма слотами та бронюваннями
+                        </label>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-danger" id="confirm-delete-btn">Удалить</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-btn">Видалити</button>
             </div>
         </div>
     </div>
@@ -229,6 +243,8 @@ function updatePagination(totalPages, currentPage) {
 function confirmDelete(doctorId, doctorName) {
     deleteDoctorId = doctorId;
     document.getElementById('delete-doctor-name').textContent = doctorName;
+    document.getElementById('force-delete-section').style.display = 'none';
+    document.getElementById('force-delete-checkbox').checked = false;
     new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
 
@@ -241,25 +257,38 @@ function confirmVerify(doctorId, doctorName, isCurrentlyVerified) {
 
 async function deleteDoctor() {
     const token = localStorage.getItem('admin_token');
+    const forceDelete = document.getElementById('force-delete-checkbox').checked;
     
     try {
-        const response = await fetch(`/api/admin/doctors/${deleteDoctorId}`, {
+        const url = `/api/admin/doctors/${deleteDoctorId}${forceDelete ? '?force=true' : ''}`;
+        const response = await fetch(url, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
         
+        const data = await response.json();
+        
         if (!response.ok) {
-            throw new Error('Failed to delete doctor');
+            // Якщо є активні бронювання, показуємо опцію примусового видалення
+            if (response.status === 400 && data.active_bookings) {
+                document.getElementById('active-bookings-count').textContent = data.active_bookings;
+                document.getElementById('force-delete-section').style.display = 'block';
+                return;
+            }
+            throw new Error(data.error || 'Failed to delete doctor');
         }
         
+        // Close modal
         bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+        
+        // Reload doctors
         loadDoctors(currentPage, currentSearch, currentFilter);
         
     } catch (error) {
         console.error('Error deleting doctor:', error);
-        alert('Ошибка при удалении врача');
+        alert('Помилка при видаленні лікаря: ' + error.message);
     }
 }
 

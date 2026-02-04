@@ -1,0 +1,245 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Деталі лікаря{% endblock %}
+{% block page_title %}
+    <a href="/admin/users/doctors" class="text-decoration-none text-muted">
+        <i class="bi bi-arrow-left"></i> Назад до списку
+    </a>
+    <span class="ms-2">Деталі лікаря</span>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="admin-card">
+            <h5><i class="bi bi-person-badge"></i> Інформація про лікаря</h5>
+            <hr>
+            <div id="doctor-info">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Завантаження...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card mt-3">
+            <h5><i class="bi bi-hospital"></i> Практика</h5>
+            <hr>
+            <div id="practice-info">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Завантаження...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-card mt-3">
+            <h5><i class="bi bi-calendar3"></i> Статистика слотів</h5>
+            <hr>
+            <div id="slots-stats">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Завантаження...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="admin-card">
+            <h5><i class="bi bi-calendar-check"></i> Останні бронювання</h5>
+            <hr>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Пацієнт</th>
+                            <th>Статус</th>
+                            <th>Сума</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookings-table">
+                        <tr>
+                            <td colspan="4" class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Завантаження...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const doctorId = '{{ doctor_id }}';
+
+async function loadDoctorDetails() {
+    const token = localStorage.getItem('admin_token');
+    
+    try {
+        const response = await fetch(`/api/admin/doctors/${doctorId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load doctor details');
+        }
+        
+        const doctor = await response.json();
+        
+        // Відображаємо інформацію про лікаря
+        const verifiedBadge = doctor.is_verified 
+            ? '<span class="badge bg-success">Верифікований</span>' 
+            : '<span class="badge bg-warning">Не верифікований</span>';
+        
+        document.getElementById('doctor-info').innerHTML = `
+            <div class="mb-3">
+                <small class="text-muted">ID</small>
+                <div><code>${doctor.id.substring(0, 8)}...</code></div>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Ім'я</small>
+                <div><strong>${doctor.first_name} ${doctor.last_name}</strong></div>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Email</small>
+                <div>${doctor.email}</div>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Телефон</small>
+                <div>${doctor.phone || 'Не вказано'}</div>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Спеціалізації</small>
+                <div>${doctor.specializations ? doctor.specializations.join(', ') : 'Не вказано'}</div>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Статус верифікації</small>
+                <div>${verifiedBadge}</div>
+            </div>
+            <div class="mb-3">
+                <small class="text-muted">Дата реєстрації</small>
+                <div>${doctor.created_at ? new Date(doctor.created_at).toLocaleDateString('uk-UA') : 'Невідомо'}</div>
+            </div>
+        `;
+        
+        // Практика
+        if (doctor.practice) {
+            document.getElementById('practice-info').innerHTML = `
+                <div class="mb-2">
+                    <strong>${doctor.practice.name}</strong>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted">Адреса:</small>
+                    <div>${doctor.practice.address || 'Не вказано'}</div>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted">Місто:</small>
+                    <div>${doctor.practice.city || 'Не вказано'}</div>
+                </div>
+            `;
+        } else {
+            document.getElementById('practice-info').innerHTML = 
+                '<p class="text-muted">Практика не вказана</p>';
+        }
+        
+        // Статистика слотів
+        if (doctor.slots_stats) {
+            document.getElementById('slots-stats').innerHTML = `
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="h4 mb-0">${doctor.slots_stats.total || 0}</div>
+                        <small class="text-muted">Всього</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="h4 mb-0 text-success">${doctor.slots_stats.available || 0}</div>
+                        <small class="text-muted">Доступно</small>
+                    </div>
+                    <div class="col-4">
+                        <div class="h4 mb-0 text-primary">${doctor.slots_stats.booked || 0}</div>
+                        <small class="text-muted">Заброньовано</small>
+                    </div>
+                </div>
+            `;
+        } else {
+            document.getElementById('slots-stats').innerHTML = 
+                '<p class="text-muted">Немає даних про слоти</p>';
+        }
+        
+        // Завантажуємо бронювання
+        loadBookings();
+        
+    } catch (error) {
+        console.error('Error loading doctor details:', error);
+        document.getElementById('doctor-info').innerHTML = 
+            '<div class="alert alert-danger">Помилка завантаження даних</div>';
+    }
+}
+
+async function loadBookings() {
+    const token = localStorage.getItem('admin_token');
+    
+    try {
+        const response = await fetch(`/api/admin/doctors/${doctorId}/bookings`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load bookings');
+        }
+        
+        const bookings = await response.json();
+        const tbody = document.getElementById('bookings-table');
+        
+        if (bookings.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">Немає бронювань</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = bookings.map(booking => {
+            const date = new Date(booking.date).toLocaleDateString('uk-UA', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            const statusBadge = {
+                'confirmed': '<span class="badge bg-primary">Підтверджено</span>',
+                'completed': '<span class="badge bg-success">Завершено</span>',
+                'cancelled': '<span class="badge bg-secondary">Скасовано</span>',
+                'no_show': '<span class="badge bg-warning">Не з\'явився</span>'
+            };
+            
+            return `
+                <tr>
+                    <td>${date}</td>
+                    <td>${booking.patient_name || 'Невідомо'}</td>
+                    <td>${statusBadge[booking.status] || booking.status}</td>
+                    <td>€${booking.amount_paid || '0.00'}</td>
+                </tr>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error loading bookings:', error);
+        document.getElementById('bookings-table').innerHTML = 
+            '<tr><td colspan="4" class="text-center text-danger">Помилка завантаження бронювань</td></tr>';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadDoctorDetails);
+</script>
+{% endblock %}

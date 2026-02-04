@@ -193,19 +193,13 @@ def api_admin_login():
         (Admin.username == username) | (Admin.email == username)
     ).first()
     
-    # Debug logging
-    print(f"Login attempt - Username/Email: {username}")
-    print(f"Admin found: {admin is not None}")
-    
     if not admin:
         return jsonify({'error': 'Invalid credentials'}), 401
     
-    # Debug password check
+    # Check password
     try:
         password_valid = admin.check_password(password)
-        print(f"Password valid: {password_valid}")
     except Exception as e:
-        print(f"Password check error: {e}")
         return jsonify({'error': 'Authentication error'}), 500
     
     if not password_valid:
@@ -401,10 +395,31 @@ def api_get_doctors(admin):
     })
 
 
-@admin_api.route('/patient/<patient_id>', methods=['GET'])
+@admin_api.route('/patients/<patient_id>', methods=['GET'])
 @admin_required
 def api_get_patient(admin, patient_id):
     """API: Получить детальную информацию о пациенте"""
+    patient = Patient.query.get(uuid.UUID(patient_id))
+    if not patient:
+        return jsonify({'error': 'Patient not found'}), 404
+    
+    return jsonify({
+        'id': str(patient.id),
+        'phone': patient.phone,
+        'name': patient.name,
+        'total_bookings': patient.total_bookings or 0,
+        'no_show_count': patient.no_show_count or 0,
+        'late_cancellations': patient.late_cancellations or 0,
+        'early_cancellations': patient.early_cancellations or 0,
+        'attended_appointments': patient.attended_appointments or 0,
+        'created_at': patient.created_at.isoformat() if patient.created_at else None
+    })
+
+
+@admin_api.route('/patients/<patient_id>/bookings', methods=['GET'])
+@admin_required
+def api_get_patient_bookings(admin, patient_id):
+    """API: Получить бронирования пациента"""
     patient = Patient.query.get(uuid.UUID(patient_id))
     if not patient:
         return jsonify({'error': 'Patient not found'}), 404
@@ -421,23 +436,15 @@ def api_get_patient(admin, patient_id):
             'booking_code': booking.booking_code,
             'status': booking.status,
             'doctor_name': f'{doctor.first_name} {doctor.last_name}' if doctor else 'N/A',
-            'date': timeslot.start_time.strftime('%Y-%m-%d') if timeslot else None,
-            'time': timeslot.start_time.strftime('%H:%M') if timeslot else None,
+            'date': timeslot.start_time.isoformat() if timeslot else None,
+            'amount_paid': float(booking.amount_paid) if booking.amount_paid else 0,
             'created_at': booking.created_at.isoformat()
         })
     
-    return jsonify({
-        'id': str(patient.id),
-        'phone': patient.phone,
-        'name': patient.name,
-        'email': patient.email,
-        'stripe_customer_id': patient.stripe_customer_id,
-        'created_at': patient.created_at.isoformat() if patient.created_at else None,
-        'bookings': bookings_list
-    })
+    return jsonify(bookings_list)
 
 
-@admin_api.route('/doctor/<doctor_id>', methods=['GET'])
+@admin_api.route('/doctors/<doctor_id>', methods=['GET'])
 @admin_required
 def api_get_doctor(admin, doctor_id):
     """API: Получить детальную информацию о враче"""
@@ -478,12 +485,48 @@ def api_get_doctor(admin, doctor_id):
             'name': practice.name if practice else None,
             'verified': practice.verified if practice else False
         } if practice else None,
-        'slots': slots_stats,
+        'slots_stats': slots_stats,
         'created_at': doctor.created_at.isoformat() if doctor.created_at else None
     })
 
 
-@admin_api.route('/doctor/<doctor_id>/verify', methods=['POST'])
+@admin_api.route('/doctors/<doctor_id>/bookings', methods=['GET'])
+@admin_required
+def api_get_doctor_bookings(admin, doctor_id):
+    """API: Получить бронирования врача"""
+    doctor = Doctor.query.get(uuid.UUID(doctor_id))
+    if not doctor:
+        return jsonify({'error': 'Doctor not found'}), 404
+    
+    # Получаем календарь врача
+    calendar = Calendar.query.filter_by(doctor_id=doctor.id).first()
+    if not calendar:
+        return jsonify([])
+    
+    # Получаем бронирования через слоты
+    bookings = db.session.query(Booking).join(TimeSlot).filter(
+        TimeSlot.calendar_id == calendar.id
+    ).order_by(Booking.created_at.desc()).limit(50).all()
+    
+    bookings_list = []
+    for booking in bookings:
+        patient = booking.patient
+        timeslot = booking.timeslot
+        
+        bookings_list.append({
+            'id': str(booking.id),
+            'booking_code': booking.booking_code,
+            'status': booking.status,
+            'patient_name': patient.name if patient else 'N/A',
+            'date': timeslot.start_time.isoformat() if timeslot else None,
+            'amount_paid': float(booking.amount_paid) if booking.amount_paid else 0,
+            'created_at': booking.created_at.isoformat()
+        })
+    
+    return jsonify(bookings_list)
+
+
+@admin_api.route('/doctors/<doctor_id>/verify', methods=['POST'])
 @permission_required('manage_verifications')
 def api_verify_doctor(admin, doctor_id):
     """API: Верифицировать врача"""
@@ -500,7 +543,7 @@ def api_verify_doctor(admin, doctor_id):
     })
 
 
-@admin_api.route('/doctor/<doctor_id>/unverify', methods=['POST'])
+@admin_api.route('/doctors/<doctor_id>/unverify', methods=['POST'])
 @permission_required('manage_verifications')
 def api_unverify_doctor(admin, doctor_id):
     """API: Снять верификацию с врача"""
@@ -517,10 +560,13 @@ def api_unverify_doctor(admin, doctor_id):
     })
 
 
-@admin_api.route('/patient/<patient_id>', methods=['DELETE'])
+@admin_api.route('/patients/<patient_id>', methods=['DELETE'])
 @permission_required('manage_users')
 def api_delete_patient(admin, patient_id):
     """API: Удалить пациента"""
+    from flask import request
+    force = request.args.get('force', 'false').lower() == 'true'
+    
     patient = Patient.query.get(uuid.UUID(patient_id))
     if not patient:
         return jsonify({'error': 'Patient not found'}), 404
@@ -530,10 +576,15 @@ def api_delete_patient(admin, patient_id):
         patient_id=patient.id, status='confirmed'
     ).count()
     
-    if active_bookings > 0:
+    if active_bookings > 0 and not force:
         return jsonify({
-            'error': f'Cannot delete patient with {active_bookings} active bookings'
+            'error': f'Cannot delete patient with {active_bookings} active bookings',
+            'active_bookings': active_bookings
         }), 400
+    
+    # Удаляем все бронирования пациента (если force=true)
+    if force:
+        Booking.query.filter_by(patient_id=patient.id).delete()
     
     db.session.delete(patient)
     db.session.commit()
@@ -541,26 +592,43 @@ def api_delete_patient(admin, patient_id):
     return jsonify({'message': 'Patient deleted successfully'})
 
 
-@admin_api.route('/doctor/<doctor_id>', methods=['DELETE'])
+@admin_api.route('/doctors/<doctor_id>', methods=['DELETE'])
 @permission_required('manage_users')
 def api_delete_doctor(admin, doctor_id):
     """API: Удалить врача"""
+    from flask import request
+    force = request.args.get('force', 'false').lower() == 'true'
+    
     doctor = Doctor.query.get(uuid.UUID(doctor_id))
     if not doctor:
         return jsonify({'error': 'Doctor not found'}), 404
     
     # Проверяем активные бронирования
     calendar = Calendar.query.filter_by(doctor_id=doctor.id).first()
+    active_bookings_count = 0
+    
     if calendar:
-        active_bookings = db.session.query(Booking).join(TimeSlot).filter(
+        active_bookings_count = db.session.query(Booking).join(TimeSlot).filter(
             TimeSlot.calendar_id == calendar.id,
             Booking.status == 'confirmed'
         ).count()
         
-        if active_bookings > 0:
+        if active_bookings_count > 0 and not force:
             return jsonify({
-                'error': f'Cannot delete doctor with {active_bookings} active bookings'
+                'error': f'Cannot delete doctor with {active_bookings_count} active bookings',
+                'active_bookings': active_bookings_count
             }), 400
+        
+        # Удаляем все бронирования врача (если force=true)
+        if force:
+            # Получаем все слоты этого врача
+            time_slots = TimeSlot.query.filter_by(calendar_id=calendar.id).all()
+            for slot in time_slots:
+                Booking.query.filter_by(timeslot_id=slot.id).delete()
+            # Удаляем слоты
+            TimeSlot.query.filter_by(calendar_id=calendar.id).delete()
+            # Удаляем календарь
+            db.session.delete(calendar)
     
     db.session.delete(doctor)
     db.session.commit()
