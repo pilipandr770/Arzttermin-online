@@ -34,17 +34,6 @@ def create_app(config_name='default'):
     # Импорт моделей для регистрации в SQLAlchemy
     from app import models
     
-    # Настройка Celery
-    celery.conf.update(
-        broker_url=app.config['CELERY_BROKER_URL'],
-        result_backend=app.config['CELERY_RESULT_BACKEND'],
-        task_serializer='json',
-        accept_content=['json'],
-        result_serializer='json',
-        timezone='Europe/Berlin',
-        enable_utc=True,
-    )
-    
     # Регистрация blueprints
     from app.routes import bp as main_bp
     from app.routes import auth, practice, doctor, patient, booking, search, legal, calendar_integration, chat, help_chat, admin
