@@ -24,10 +24,20 @@ Usage:
 from redis import Redis
 from rq import Queue
 import os
+import ssl
 
-# Redis connection
+# Redis connection with SSL support for Upstash
 redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
-redis_conn = Redis.from_url(redis_url)
+
+# SSL configuration for rediss:// URLs (Upstash)
+if redis_url.startswith('rediss://'):
+    redis_conn = Redis.from_url(
+        redis_url,
+        ssl_cert_reqs=None,  # Disable certificate verification for Upstash
+        decode_responses=False
+    )
+else:
+    redis_conn = Redis.from_url(redis_url)
 
 # Queues
 default_queue = Queue('default', connection=redis_conn)
