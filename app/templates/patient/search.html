@@ -860,17 +860,32 @@ function addChatMessage(text, sender, isTyping = false, isError = false) {
     const messageId = `msg-${Date.now()}-${Math.random()}`;
     const isUser = sender === 'user';
     
-    const messageHtml = `
-        <div class="d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'} mb-3" id="${messageId}">
-            <div class="message-bubble ${isUser ? 'bg-primary text-white' : isError ? 'bg-danger text-white' : 'bg-light'}" 
-                 style="max-width: 75%; border-radius: 15px; padding: 10px 15px; ${isTyping ? 'opacity: 0.6;' : ''}">
-                ${!isUser && !isTyping ? '<i class="bi bi-robot me-1"></i>' : ''}
-                ${isTyping ? '<span class="typing-indicator">...</span>' : text}
-            </div>
-        </div>
-    `;
+    // XSS Protection: Create elements instead of using innerHTML for user content
+    const messageContainer = document.createElement('div');
+    messageContainer.className = `d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'} mb-3`;
+    messageContainer.id = messageId;
     
-    messagesDiv.insertAdjacentHTML('beforeend', messageHtml);
+    const bubbleDiv = document.createElement('div');
+    bubbleDiv.className = `message-bubble ${isUser ? 'bg-primary text-white' : isError ? 'bg-danger text-white' : 'bg-light'}`;
+    bubbleDiv.style.cssText = `max-width: 75%; border-radius: 15px; padding: 10px 15px; ${isTyping ? 'opacity: 0.6;' : ''}`;
+    
+    if (!isUser && !isTyping) {
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-robot me-1';
+        bubbleDiv.appendChild(icon);
+    }
+    
+    if (isTyping) {
+        const typingSpan = document.createElement('span');
+        typingSpan.className = 'typing-indicator';
+        typingSpan.textContent = '...';
+        bubbleDiv.appendChild(typingSpan);
+    } else {
+        bubbleDiv.appendChild(document.createTextNode(text));
+    }
+    
+    messageContainer.appendChild(bubbleDiv);
+    messagesDiv.appendChild(messageContainer);
     
     // Scroll to bottom
     messagesDiv.scrollTop = messagesDiv.scrollHeight;

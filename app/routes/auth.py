@@ -3,9 +3,15 @@
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
+from marshmallow import ValidationError
 from app.models import Patient, Doctor, Practice
-from app import db
+from app import db, limiter
 from app.constants.specialities import SPECIALITIES
+from app.schemas import (
+    PatientLoginSchema, PatientRegisterSchema,
+    DoctorLoginSchema, DoctorRegisterSchema,
+    PracticeRegisterSchema
+)
 import re
 import uuid
 from datetime import datetime
@@ -41,15 +47,17 @@ def doctor_register():
 
 # API маршруты
 @bp.route('/patient/login', methods=['POST'])
+@limiter.limit("5 per minute")
 def api_patient_login():
     """API: Вход пациента"""
-    data = request.get_json()
-    phone = data.get('phone')
+    # Validate input
+    schema = PatientLoginSchema()
+    try:
+        data = schema.load(request.get_json())
+    except ValidationError as err:
+        return jsonify({'error': 'Ungültige Eingabe', 'details': err.messages}), 400
     
-    if not phone:
-        return jsonify({'error': 'Telefonnummer erforderlich'}), 400
-    
-    # Для разработки - убираем валидацию телефона
+    phone = data['phone']
     
     # Создаем или находим пациента
     patient = Patient.query.filter_by(phone=phone).first()
@@ -70,6 +78,7 @@ def api_patient_login():
 
 
 @bp.route('/patient/register', methods=['POST'])
+@limiter.limit("3 per minute")
 def api_patient_register():
     """API: Регистрация пациента"""
     data = request.get_json()
@@ -100,14 +109,18 @@ def api_patient_register():
 
 
 @bp.route('/doctor/login', methods=['POST'])
+@limiter.limit("5 per minute")
 def api_doctor_login():
     """API: Вход врача"""
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
+    # Validate input
+    schema = DoctorLoginSchema()
+    try:
+        data = schema.load(request.get_json())
+    except ValidationError as err:
+        return jsonify({'error': 'Ungültige Eingabe', 'details': err.messages}), 400
     
-    if not email or not password:
-        return jsonify({'error': 'Email und Passwort erforderlich'}), 400
+    email = data['email']
+    password = data['password']
     
     doctor = Doctor.query.filter_by(email=email).first()
     if not doctor or not doctor.check_password(password):
@@ -131,6 +144,7 @@ def api_doctor_login():
 
 
 @bp.route('/practice/register', methods=['POST'])
+@limiter.limit("2 per hour")
 def api_practice_register():
     """API: Регистрация практики"""
     data = request.get_json()
@@ -163,6 +177,7 @@ def api_practice_register():
 
 
 @bp.route('/doctor/register', methods=['POST'])
+@limiter.limit("2 per hour")
 def api_doctor_register():
     """API: Регистрация врача"""
     data = request.get_json()

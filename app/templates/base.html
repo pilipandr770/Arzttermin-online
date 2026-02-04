@@ -305,12 +305,19 @@
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
             
+            // XSS Protection: Use textContent instead of innerHTML for user input
             if (type === 'assistant' && !isTyping) {
-                contentDiv.innerHTML = `<i class="bi bi-robot me-2"></i>${text}`;
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-robot me-2';
+                contentDiv.appendChild(icon);
+                contentDiv.appendChild(document.createTextNode(text));
             } else if (type === 'user') {
-                contentDiv.innerHTML = text;
+                contentDiv.textContent = text;
             } else {
-                contentDiv.innerHTML = `<i class="bi bi-three-dots"></i> ${text}`;
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-three-dots';
+                contentDiv.appendChild(icon);
+                contentDiv.appendChild(document.createTextNode(' ' + text));
             }
             
             messageDiv.appendChild(contentDiv);

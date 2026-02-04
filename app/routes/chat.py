@@ -4,6 +4,7 @@ Chat Route - AI Chatbot Assistant для практик
 from flask import Blueprint, request, jsonify, session
 from app.models.practice import Practice
 from app.models.doctor import Doctor
+from app import limiter
 import os
 import uuid
 import json
@@ -134,6 +135,7 @@ Antworte immer höflich, kurz und präzise. Bei medizinischen Fragen verweise au
 
 
 @bp.route('/<practice_id>', methods=['POST'])
+@limiter.limit("10 per minute")
 def chat_with_practice(practice_id):
     """
     Чат с AI ассистентом практики

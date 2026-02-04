@@ -6,6 +6,7 @@ Help Chat Route - AI Assistant для помощи пользователям п
 """
 from flask import Blueprint, request, jsonify, session
 from functools import wraps
+from app import limiter
 import os
 import jwt
 import uuid
@@ -225,6 +226,7 @@ def get_system_prompt_for_doctor(current_page: str) -> str:
 
 
 @bp.route('', methods=['POST'])
+@limiter.limit("10 per minute")
 def help_chat():
     """
     Hauptendpoint für den Help Chatbot

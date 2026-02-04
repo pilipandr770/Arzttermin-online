@@ -7,6 +7,9 @@ from flask_migrate import Migrate
 from flask_mail import Mail
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
 from config import config
 import click
 
@@ -15,6 +18,11 @@ db = SQLAlchemy()
 migrate = Migrate()
 mail = Mail()
 jwt = JWTManager()
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 
 
 def create_app(config_name='default'):
@@ -29,7 +37,49 @@ def create_app(config_name='default'):
     migrate.init_app(app, db)
     mail.init_app(app)
     jwt.init_app(app)
-    CORS(app)
+    
+    # CORS Configuration - Restrict to trusted domains only
+    allowed_origins = [
+        'https://arzttermin-online.onrender.com',
+        'https://terminfinder.de',
+        'https://www.terminfinder.de'
+    ]
+    
+    # Add localhost for development
+    if app.config.get('ENV') == 'development':
+        allowed_origins.extend(['http://localhost:5000', 'http://127.0.0.1:5000'])
+    
+    CORS(app,
+        origins=allowed_origins,
+        supports_credentials=True,
+        allow_headers=['Content-Type', 'Authorization'],
+        methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+    )
+    
+    # Rate Limiting
+    limiter.init_app(app)
+    
+    # Security Headers (Talisman)
+    # Skip in development to avoid HTTPS issues
+    if app.config.get('ENV') != 'development':
+        Talisman(app,
+            force_https=True,
+            strict_transport_security=True,
+            strict_transport_security_max_age=31536000,
+            content_security_policy={
+                'default-src': ["'self'"],
+                'script-src': ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"],
+                'style-src': ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"],
+                'img-src': ["'self'", "data:", "https:"],
+                'font-src': ["'self'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"],
+                'connect-src': ["'self'"]
+            },
+            content_security_policy_nonce_in=['script-src']
+        )
+    
+    # Security Checks
+    from app.utils.security import check_secret_key_strength
+    check_secret_key_strength()
     
     # Импорт моделей для регистрации в SQLAlchemy
     from app import models
