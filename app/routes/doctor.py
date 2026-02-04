@@ -596,6 +596,16 @@ def api_generate_slots():
     
     db.session.commit()
     
+    # Тригер системы оповещений для созданных слотов
+    try:
+        from app.services.alert_service import check_alerts_for_doctor
+        date_from = today
+        date_to = today + timedelta(weeks=weeks_ahead)
+        alerts_sent = check_alerts_for_doctor(doctor.id, date_from, date_to)
+        print(f"Triggered alert notifications: {alerts_sent} alerts sent")
+    except Exception as e:
+        print(f"Error triggering alerts: {e}")
+    
     return jsonify({
         'message': f'Generated {len(generated_slots)} time slots',
         'generated_slots': generated_slots

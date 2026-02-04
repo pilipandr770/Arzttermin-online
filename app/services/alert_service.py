@@ -1,9 +1,10 @@
 """
 Alert notification service - проверка и отправка уведомлений пациентам
 """
-from app.models import PatientAlert, TimeSlot, Doctor
+from app.models import PatientAlert, TimeSlot, Doctor, Practice
 from app import db
 from datetime import datetime
+import json
 
 
 def check_and_notify_alerts(slot_id):
@@ -19,6 +20,15 @@ def check_and_notify_alerts(slot_id):
     
     doctor = slot.calendar.doctor
     slot_date = slot.start_time.date()
+    
+    # Получаем город практики для проверки
+    practice_city = None
+    if doctor.practice:
+        try:
+            address_dict = json.loads(doctor.practice.address) if doctor.practice.address else {}
+            practice_city = address_dict.get('city', '').lower() if address_dict else None
+        except:
+            practice_city = None
     
     # Находим подходящие алерты
     alerts = PatientAlert.query.filter(
@@ -37,6 +47,11 @@ def check_and_notify_alerts(slot_id):
     notifications_sent = []
     
     for alert in alerts:
+        # Проверяем город, если указан в алерте
+        if alert.city and practice_city:
+            if alert.city.lower() != practice_city:
+                continue
+        
         # Проверяем диапазон дат
         if alert.date_from and slot_date < alert.date_from:
             continue
@@ -58,7 +73,8 @@ def check_and_notify_alerts(slot_id):
             'patient_id': alert.patient_id,
             'doctor_name': f"{doctor.first_name} {doctor.last_name}",
             'slot_date': slot_date.strftime('%Y-%m-%d'),
-            'slot_time': slot.start_time.strftime('%H:%M')
+            'slot_time': slot.start_time.strftime('%H:%M'),
+            'city': practice_city
         })
     
     if notifications_sent:

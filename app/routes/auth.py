@@ -165,11 +165,12 @@ def api_doctor_register():
     last_name = data.get('last_name', '')
     tax_number = data.get('tax_number', '')
     speciality = data.get('speciality', 'general_practitioner')
+    city = data.get('city', '')
     practice_id_str = data.get('practice_id', '')
     
     # Для разработки - убираем все проверки, кроме основных полей
-    if not email or not password or not first_name or not last_name:
-        return jsonify({'error': 'Email, Passwort, Vorname und Nachname erforderlich'}), 400
+    if not email or not password or not first_name or not last_name or not city:
+        return jsonify({'error': 'Email, Passwort, Vorname, Nachname und Stadt erforderlich'}), 400
     
     practice_id = None
     practice = None
@@ -187,12 +188,21 @@ def api_doctor_register():
             return jsonify({'error': 'Practice not found'}), 404
     else:
         # Если practice_id не указан, создаем новую практику автоматически
+        import json
+        practice_address = json.dumps({
+            'street': '',
+            'plz': '',
+            'city': city,
+            'bundesland': '',
+            'country': 'Deutschland'
+        })
+        
         practice = Practice(
             name=f"Praxis Dr. {last_name}",
             vat_number=tax_number if tax_number else '',
             owner_email=email,
             phone='',
-            address='',
+            address=practice_address,
             verified=True,  # Для разработки - автоматически верифицируем
             verified_at=datetime.utcnow()
         )
@@ -274,6 +284,15 @@ def api_doctor_register():
             current_time = slot_end
     
     db.session.commit()
+    
+    # Тригер системы оповещений для созданных слотов
+    try:
+        from app.services.alert_service import check_alerts_for_doctor
+        from datetime import date
+        alerts_sent = check_alerts_for_doctor(doctor.id, today, today + timedelta(days=7))
+        print(f"Triggered alert notifications: {alerts_sent} alerts sent")
+    except Exception as e:
+        print(f"Error triggering alerts: {e}")
     
     return jsonify({
         'message': 'Arzt erfolgreich registriert',

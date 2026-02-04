@@ -166,6 +166,10 @@ def api_update_extended_practice_profile():
     if not practice:
         return jsonify({'error': 'Practice not found'}), 404
     
+    # Update address (including city)
+    if 'address' in data:
+        practice.address = data['address']
+    
     # Update basic fields
     if 'phone' in data:
         practice.phone = data['phone']

@@ -40,6 +40,12 @@
                         </div>
                         
                         <div class="mb-3">
+                            <label for="city" class="form-label">Stadt <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="city" name="city" required>
+                            <div class="form-text">Stadt, in der Ihre Praxis liegt (z.B. Frankfurt am Main)</div>
+                        </div>
+                        
+                        <div class="mb-3">
                             <label for="email" class="form-label">E-Mail</label>
                             <input type="email" class="form-control" id="email" name="email">
                         </div>
@@ -85,6 +91,7 @@ document.getElementById('doctor-register-form').addEventListener('submit', async
         email: document.getElementById('email').value,
         password: document.getElementById('password').value,
         speciality: document.getElementById('speciality').value,
+        city: document.getElementById('city').value,
         tax_number: document.getElementById('tax_number').value,
         practice_id: document.getElementById('practice_id').value || null
     };

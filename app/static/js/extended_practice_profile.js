@@ -39,6 +39,18 @@ function populateForm() {
     };
     
     // Basic fields
+    // Address - extract city from address JSON
+    let city = '';
+    if (practiceData.address) {
+        try {
+            const addressObj = typeof practiceData.address === 'string' ? JSON.parse(practiceData.address) : practiceData.address;
+            city = addressObj.city || '';
+        } catch (e) {
+            console.error('Error parsing address:', e);
+        }
+    }
+    setValueSafe('city', city);
+    
     setValueSafe('phone', practiceData.phone);
     setValueSafe('emergency_phone', practiceData.emergency_phone);
     setValueSafe('whatsapp_number', practiceData.whatsapp_number);
@@ -234,6 +246,14 @@ function setupFormHandler() {
         
         // Collect all data
         const formData = {
+            // Address - save city in address JSON format
+            address: JSON.stringify({
+                street: '',
+                plz: '',
+                city: getValueSafe('city'),
+                bundesland: '',
+                country: 'Deutschland'
+            }),
             phone: getValueSafe('phone'),
             emergency_phone: getValueSafe('emergency_phone'),
             whatsapp_number: getValueSafe('whatsapp_number'),
