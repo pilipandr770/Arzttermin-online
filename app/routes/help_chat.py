@@ -269,7 +269,11 @@ def help_chat():
         # API Key prüfen
         openai_api_key = os.getenv('OPENAI_API_KEY')
         if not openai_api_key:
-            return jsonify({'error': 'OpenAI API nicht konfiguriert'}), 500
+            print("❌ ERROR: OPENAI_API_KEY not configured!")
+            return jsonify({
+                'error': 'Chatbot ist nicht verfügbar (API Key fehlt)',
+                'code': 'missing_api_key'
+            }), 500
         
         # User context bestimmen
         context = get_user_context()
@@ -285,6 +289,7 @@ def help_chat():
         is_valid, reason, blocked_response = validate_scope(user_message)
         
         if not is_valid:
+            print(f"⚠️ Message blocked: reason={reason}, message='{user_message[:50]}...'")
             return jsonify({
                 'type': 'scope_violation',
                 'medical_advice': False,
@@ -348,6 +353,8 @@ def help_chat():
             
             assistant_reply = response.choices[0].message.content
             
+            print(f"✅ Help chat success: user_type={user_type}, response_length={len(assistant_reply)}")
+            
             # Structured response
             return jsonify({
                 'type': 'platform_help',
@@ -360,8 +367,14 @@ def help_chat():
             })
             
         except Exception as e:
-            print(f"OpenAI API Fehler: {str(e)}")
-            return jsonify({'error': f'OpenAI API Fehler: {str(e)}'}), 500
+            print(f"❌ OpenAI API Fehler: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                'error': 'Chatbot ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut.',
+                'code': 'openai_error',
+                'details': str(e)
+            }), 500
             
     except Exception as e:
         print(f"Help Chat Fehler: {str(e)}")

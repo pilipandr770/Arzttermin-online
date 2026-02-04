@@ -75,6 +75,15 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
         try:
             openai.api_key = os.getenv('OPENAI_API_KEY')
             
+            if not openai.api_key:
+                print("❌ ERROR: OPENAI_API_KEY not configured!")
+                return {
+                    'status': 'error',
+                    'error': 'OpenAI API key not configured',
+                    'session_id': session_id,
+                    'medical_advice': False
+                }
+            
             # NO HISTORY - only current message
             response = openai.ChatCompletion.create(
                 model="gpt-4",
@@ -89,6 +98,8 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
             
             assistant_message = response.choices[0].message.content
             
+            print(f"✅ Practice chatbot success: practice={practice.name if practice else 'None'}, response_length={len(assistant_message)}")
+            
             # Structured response
             return {
                 'status': 'success',
@@ -101,6 +112,9 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
             }
             
         except Exception as e:
+            print(f"❌ OpenAI API error: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 'status': 'error',
                 'error': str(e),
