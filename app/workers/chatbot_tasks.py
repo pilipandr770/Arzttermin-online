@@ -78,7 +78,6 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
             if doctor and doctor.practice:
                 practice = doctor.practice
             print(f"🚀 Doctor loaded: {doctor.user.email if doctor else 'NOT FOUND'}")
-                practice = doctor.practice
         
         # Build system prompt with HARD restrictions
         system_prompt = _build_gdpr_safe_system_prompt(practice, doctor)
