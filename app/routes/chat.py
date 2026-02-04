@@ -198,8 +198,56 @@ def chat_with_practice(practice_id):
             }), 200  # 200 OK, not an error - legitimate response
         
         # Enqueue chatbot processing task (medium priority)
+        # ⚠️ Fallback to synchronous if Redis unavailable (local dev)
         try:
             from app.workers import default_queue
+            
+            if default_queue is None:
+                # Redis unavailable - run synchronously
+                print("⚠️ Redis unavailable, running chatbot synchronously")
+                from app.workers.chatbot_tasks import process_chatbot_message
+                
+                result = process_chatbot_message(
+                    user_message,
+                    practice_id=str(practice.id),
+                    session_id=session_id
+                )
+                
+                if result:
+                    # Handle blocked responses from worker
+                    if result.get('status') == 'blocked':
+                        return jsonify({
+                            'type': result.get('type', 'scope_violation'),
+                            'medical_advice': False,
+                            'response': result.get('response'),
+                            'reason': result.get('reason'),
+                            'session_id': session_id
+                        }), 200
+                    
+                    # Handle success responses
+                    if result.get('status') == 'success':
+                        return jsonify({
+                            'type': result.get('type', 'platform_help'),
+                            'medical_advice': False,
+                            'response': result.get('response'),
+                            'session_id': session_id,
+                            'disclaimer': result.get('disclaimer', 'Dies ist keine medizinische Beratung.')
+                        }), 200
+                    
+                    # Handle errors
+                    error_msg = result.get('error', 'Unknown error')
+                    print(f"Chatbot task failed: {error_msg}")
+                    return jsonify({
+                        'error': 'Der Chatbot-Service ist derzeit nicht verfügbar. Bitte kontaktieren Sie die Praxis direkt.',
+                        'code': 'service_unavailable'
+                    }), 503
+                else:
+                    return jsonify({
+                        'error': 'Der Chatbot-Service ist derzeit nicht verfügbar.',
+                        'code': 'service_unavailable'
+                    }), 503
+            
+            # Redis available - enqueue async task
             from app.workers.chatbot_tasks import process_chatbot_message
             
             # Enqueue task and wait for result (synchronous for MVP)

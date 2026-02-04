@@ -147,17 +147,74 @@ PRAXIS INFORMATION:
 Name: {practice.name}
 """
         
-        if practice.full_address_string:
-            practice_info += f"Adresse: {practice.full_address_string}\n"
+        # Address (may be JSON or string)
+        if practice.address:
+            try:
+                import json
+                address_data = json.loads(practice.address) if isinstance(practice.address, str) else practice.address
+                if isinstance(address_data, dict):
+                    street = address_data.get('street', '')
+                    plz = address_data.get('plz', '')
+                    city = address_data.get('city', '')
+                    practice_info += f"Adresse: {street}, {plz} {city}\n"
+                else:
+                    practice_info += f"Adresse: {practice.address}\n"
+            except:
+                practice_info += f"Adresse: {practice.address}\n"
         
         if practice.phone:
             practice_info += f"Telefon: {practice.phone}\n"
         
-        if practice.email:
-            practice_info += f"Email: {practice.email}\n"
+        if practice.owner_email:
+            practice_info += f"Email: {practice.owner_email}\n"
         
+        if practice.website:
+            practice_info += f"Website: {practice.website}\n"
+        
+        # Opening hours (may be JSON)
         if practice.opening_hours:
-            practice_info += f"\nÖffnungszeiten: {practice.opening_hours}\n"
+            try:
+                import json
+                hours = json.loads(practice.opening_hours) if isinstance(practice.opening_hours, str) else practice.opening_hours
+                if isinstance(hours, dict):
+                    practice_info += "\nÖffnungszeiten:\n"
+                    days_de = {
+                        'monday': 'Montag', 'tuesday': 'Dienstag', 'wednesday': 'Mittwoch',
+                        'thursday': 'Donnerstag', 'friday': 'Freitag', 'saturday': 'Samstag', 'sunday': 'Sonntag'
+                    }
+                    for day, times in hours.items():
+                        day_name = days_de.get(day, day)
+                        if isinstance(times, list) and times:
+                            time_str = ', '.join([f"{t[0]}-{t[1]}" for t in times if isinstance(t, list) and len(t) >= 2])
+                            practice_info += f"  {day_name}: {time_str}\n"
+                else:
+                    practice_info += f"\nÖffnungszeiten: {practice.opening_hours}\n"
+            except:
+                practice_info += f"\nÖffnungszeiten: {practice.opening_hours}\n"
+        
+        # Parking info
+        if practice.parking_info:
+            practice_info += f"\nParkmöglichkeiten: {practice.parking_info}\n"
+        
+        # Public transport (may be JSON)
+        if practice.public_transport:
+            try:
+                import json
+                transport = json.loads(practice.public_transport) if isinstance(practice.public_transport, str) else practice.public_transport
+                if isinstance(transport, list) and transport:
+                    practice_info += "\nÖffentliche Verkehrsmittel:\n"
+                    for t in transport:
+                        if isinstance(t, dict):
+                            practice_info += f"  {t.get('type', '').capitalize()} {t.get('line', '')}: Haltestelle {t.get('stop', '')} ({t.get('distance', '')})\n"
+            except:
+                pass
+        
+        # Emergency contacts
+        if practice.emergency_phone:
+            practice_info += f"\nNotfallkontakt: {practice.emergency_phone}\n"
+        
+        if practice.whatsapp_number:
+            practice_info += f"WhatsApp: {practice.whatsapp_number}\n"
         
         # Custom instructions from practice
         if practice.chatbot_instructions:
