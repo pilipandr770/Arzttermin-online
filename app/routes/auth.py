@@ -113,13 +113,20 @@ def api_doctor_login():
     if not doctor or not doctor.check_password(password):
         return jsonify({'error': 'Ungültige Anmeldedaten'}), 401
     
-    access_token = create_access_token(identity=str(doctor.id), additional_claims={'type': 'doctor'})
-    refresh_token = create_refresh_token(identity=str(doctor.id), additional_claims={'type': 'doctor'})
+    # Include practice_id in JWT claims for tenant isolation
+    claims = {
+        'type': 'doctor',
+        'practice_id': str(doctor.practice_id) if doctor.practice_id else None
+    }
+    
+    access_token = create_access_token(identity=str(doctor.id), additional_claims=claims)
+    refresh_token = create_refresh_token(identity=str(doctor.id), additional_claims=claims)
     
     return jsonify({
         'access_token': access_token,
         'refresh_token': refresh_token,
-        'doctor_id': str(doctor.id)
+        'doctor_id': str(doctor.id),
+        'practice_id': str(doctor.practice_id) if doctor.practice_id else None
     })
 
 

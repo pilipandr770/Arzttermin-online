@@ -22,8 +22,8 @@ class Doctor(db.Model):
     # Primary Key
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
-    # Foreign Keys
-    practice_id = db.Column(UUID(as_uuid=True), db.ForeignKey('terminfinder.practices.id'), nullable=True, index=True)
+    # Foreign Keys - Practice is REQUIRED for multi-tenant isolation
+    practice_id = db.Column(UUID(as_uuid=True), db.ForeignKey('terminfinder.practices.id'), nullable=False, index=True)
     
     # Основная информация
     first_name = db.Column(db.String(100), nullable=False)
