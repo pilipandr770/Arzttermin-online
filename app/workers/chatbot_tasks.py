@@ -5,41 +5,57 @@ Chatbot Tasks
 Background tasks for AI chatbot message processing.
 OpenAI API calls can be slow, so we handle them asynchronously.
 
-⚠️ GDPR WARNING: This module will be refactored in Phase 3 to remove personal data storage.
+✅ PHASE 3: GDPR-compliant - No personal data storage, hard scope enforcement
 """
 
 import openai
 import os
 from app import db
 from app.models import Doctor, Practice
+from app.utils.chatbot_scope import validate_scope, ALLOWED_INTENTS
 from datetime import datetime
 
 
 def process_chatbot_message(message, practice_id=None, doctor_id=None, session_id=None):
     """
-    Process chatbot message with OpenAI
+    Process chatbot message with OpenAI (GDPR-compliant)
     
     Event: chatbot.message.received
     Priority: medium
     
-    ⚠️ PHASE 3 TODO:
-    - Remove chat history storage
-    - Add hard scope enforcement (ALLOWED_INTENTS)
-    - Return structured responses with medical_advice flag
+    ✅ PHASE 3 COMPLIANCE:
+    - NO chat history storage
+    - Hard scope enforcement (ALLOWED_INTENTS)
+    - Structured responses with medical_advice flag
+    - Anonymous session_id (no persistence)
     
     Args:
         message: str - User message
         practice_id: UUID - Practice context (optional)
         doctor_id: UUID - Doctor context (optional)
-        session_id: str - Session UUID (no persistent storage)
+        session_id: str - Anonymous session UUID (ephemeral)
     
     Returns:
-        dict with response
+        dict with structured response
     """
     from app import create_app
     app = create_app()
     
     with app.app_context():
+        # SCOPE VALIDATION - Block medical queries
+        is_valid, reason, blocked_response = validate_scope(message)
+        
+        if not is_valid:
+            return {
+                'status': 'blocked',
+                'type': 'scope_violation',
+                'medical_advice': False,
+                'response': blocked_response,
+                'reason': reason,
+                'session_id': session_id,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+        
         # Get context
         practice = None
         doctor = None
@@ -52,13 +68,14 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
             if doctor and doctor.practice:
                 practice = doctor.practice
         
-        # Build system prompt
-        system_prompt = _build_system_prompt(practice, doctor)
+        # Build system prompt with HARD restrictions
+        system_prompt = _build_gdpr_safe_system_prompt(practice, doctor)
         
-        # Call OpenAI
+        # Call OpenAI (stateless - no history)
         try:
             openai.api_key = os.getenv('OPENAI_API_KEY')
             
+            # NO HISTORY - only current message
             response = openai.ChatCompletion.create(
                 model="gpt-4",
                 messages=[
@@ -71,45 +88,55 @@ def process_chatbot_message(message, practice_id=None, doctor_id=None, session_i
             
             assistant_message = response.choices[0].message.content
             
+            # Structured response
             return {
                 'status': 'success',
+                'type': 'platform_help',
+                'medical_advice': False,  # ALWAYS false
                 'response': assistant_message,
                 'session_id': session_id,
-                'timestamp': datetime.utcnow().isoformat()
+                'timestamp': datetime.utcnow().isoformat(),
+                'disclaimer': 'Dies ist keine medizinische Beratung. Wenden Sie sich für medizinische Fragen an einen Arzt.'
             }
             
         except Exception as e:
             return {
                 'status': 'error',
                 'error': str(e),
-                'session_id': session_id
+                'session_id': session_id,
+                'medical_advice': False
             }
 
 
-def _build_system_prompt(practice, doctor):
+def _build_gdpr_safe_system_prompt(practice, doctor):
     """
-    Build system prompt with practice/doctor context
+    Build GDPR-compliant system prompt with HARD medical restrictions
     
-    ⚠️ PHASE 3 TODO: Harden medical disclaimers and scope enforcement
+    ✅ PHASE 3: Hardened disclaimers and scope enforcement
     """
-    base_prompt = """
+    base_prompt = f"""
 Du bist ein hilfreicher Assistent für die TerminFinder-Plattform.
 
-WICHTIG - DEINE GRENZEN:
-- Du darfst KEINE medizinischen Ratschläge, Diagnosen oder Behandlungsempfehlungen geben
-- Du darfst KEINE Symptome interpretieren oder Medikamente empfehlen
-- Du darfst NUR über die Plattform, Terminbuchung und allgemeine Praxisinformationen sprechen
+🚫 ABSOLUTES VERBOT - DU DARFST NIEMALS:
+- Medizinische Diagnosen stellen oder interpretieren
+- Symptome deuten oder Krankheiten identifizieren
+- Medikamente empfehlen oder über Nebenwirkungen sprechen
+- Behandlungsratschläge geben
+- Testergebnisse erklären
+- Bei Notfällen helfen (verweise auf 112)
+- Gesundheitsfragen beantworten
 
-ERLAUBTE THEMEN:
-- Wie man einen Termin bucht
-- Wo sich die Praxis befindet
-- Öffnungszeiten
-- Kontaktinformationen
-- Navigation auf der Plattform
-- Profilverwaltung
+✅ ERLAUBT - DU DARFST NUR:
+- Informationen über die Plattform TerminFinder geben
+- Erklären wie man einen Termin bucht
+- Praxisinformationen teilen (Adresse, Öffnungszeiten, Kontakt)
+- Wegbeschreibungen geben
+- Bei Account-Verwaltung helfen
 
-Bei medizinischen Fragen antworte immer:
-"Ich kann keine medizinischen Ratschläge geben. Bitte wenden Sie sich direkt an einen Arzt."
+WICHTIG: Wenn jemand nach IRGENDETWAS Medizinischem fragt, antworte:
+"Ich kann keine medizinischen Fragen beantworten. Bitte wenden Sie sich direkt an einen Arzt. Notruf: 112"
+
+ERLAUBTE THEMEN ({', '.join(ALLOWED_INTENTS)}):
 """
     
     if practice:
@@ -147,6 +174,13 @@ Fachgebiet: {doctor.speciality}
 """
         base_prompt += doctor_info
     
+    # Final hard disclaimer
+    base_prompt += """
+
+WICHTIG: Beginne JEDE Antwort mit einem Hinweis, dass dies keine medizinische Beratung ist.
+Antworte kurz und präzise nur zu erlaubten Themen.
+"""
+    
     return base_prompt
 
 
@@ -156,6 +190,8 @@ def process_help_chatbot_message(message, context_type='general', context_id=Non
     
     Event: chatbot.message.received
     Priority: low
+    
+    ✅ PHASE 3: GDPR-compliant, no personal data
     
     Args:
         message: str - User message
@@ -169,6 +205,19 @@ def process_help_chatbot_message(message, context_type='general', context_id=Non
     app = create_app()
     
     with app.app_context():
+        # SCOPE VALIDATION
+        is_valid, reason, blocked_response = validate_scope(message)
+        
+        if not is_valid:
+            return {
+                'status': 'blocked',
+                'type': 'scope_violation',
+                'medical_advice': False,
+                'response': blocked_response,
+                'reason': reason,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+        
         system_prompt = """
 Du bist ein hilfreicher Assistent für die TerminFinder-Plattform.
 
@@ -178,9 +227,10 @@ Du hilfst Benutzern bei:
 - Profilverwaltung
 - Navigation auf der Website
 
-Du darfst KEINE medizinischen Fragen beantworten.
+🚫 DU DARFST KEINE medizinischen Fragen beantworten.
 
 Antworte kurz und freundlich auf Deutsch oder Ukrainisch.
+Beginne mit: "ℹ️ Dies ist keine medizinische Beratung."
 """
         
         try:
@@ -200,6 +250,8 @@ Antworte kurz und freundlich auf Deutsch oder Ukrainisch.
             
             return {
                 'status': 'success',
+                'type': 'platform_help',
+                'medical_advice': False,
                 'response': assistant_message,
                 'context_type': context_type,
                 'timestamp': datetime.utcnow().isoformat()
@@ -209,5 +261,6 @@ Antworte kurz und freundlich auf Deutsch oder Ukrainisch.
             return {
                 'status': 'error',
                 'error': str(e),
-                'context_type': context_type
+                'context_type': context_type,
+                'medical_advice': False
             }

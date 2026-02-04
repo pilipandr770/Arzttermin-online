@@ -1,11 +1,14 @@
 """
 Help Chat Route - AI Assistant для помощи пользователям приложения
 Контекстно-зависимый чатбот: незарегистрированные, пациенты, врачи
+
+✅ PHASE 3: GDPR-compliant - No personal data storage, stateless sessions
 """
 from flask import Blueprint, request, jsonify, session
 from functools import wraps
 import os
 import jwt
+import uuid
 
 bp = Blueprint('help_chat', __name__, url_prefix='/api/help-chat')
 
@@ -225,8 +228,33 @@ def get_system_prompt_for_doctor(current_page: str) -> str:
 def help_chat():
     """
     Hauptendpoint für den Help Chatbot
-    Akzeptiert: user_message, current_page
-    Returns: AI response basierend auf Benutzertyp und Kontext
+    
+    ✅ PHASE 3: GDPR-compliant - No history storage, scope enforcement
+    
+    Request JSON:
+    {
+        "message": "Wie buche ich einen Termin?",
+        "current_page": "/search",
+        "session_id": "optional-uuid"  // ephemeral only
+    }
+    
+    Response JSON (SUCCESS):
+    {
+        "type": "platform_help",
+        "medical_advice": false,
+        "response": "Antwort vom Assistenten",
+        "user_type": "guest|patient|doctor",
+        "current_page": "/search",
+        "session_id": "uuid"
+    }
+    
+    Response JSON (BLOCKED):
+    {
+        "type": "scope_violation",
+        "medical_advice": false,
+        "response": "Ich kann keine medizinischen Fragen...",
+        "reason": "contains_forbidden_keyword"
+    }
     """
     try:
         data = request.get_json()
@@ -234,6 +262,9 @@ def help_chat():
         
         if not user_message:
             return jsonify({'error': 'Nachricht darf nicht leer sein'}), 400
+        
+        if len(user_message) > 1000:
+            return jsonify({'error': 'Nachricht ist zu lang (max 1000 Zeichen)'}), 400
         
         # API Key prüfen
         openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -245,19 +276,23 @@ def help_chat():
         user_type = context['user_type']
         current_page = context['current_page']
         
-        # Chat history aus Session holen
-        session_key = f'help_chat_history_{user_type}'
-        chat_history = session.get(session_key, [])
+        # Session ID (ephemeral, no DB storage)
+        session_id = data.get('session_id') or str(uuid.uuid4())
         
-        # Limit auf 20 Nachrichten
-        if len(chat_history) > 20:
-            chat_history = chat_history[-20:]
+        # ✅ PHASE 3: Scope validation BEFORE processing
+        from app.utils.chatbot_scope import validate_scope
         
-        # User message hinzufügen
-        chat_history.append({
-            'role': 'user',
-            'content': user_message
-        })
+        is_valid, reason, blocked_response = validate_scope(user_message)
+        
+        if not is_valid:
+            return jsonify({
+                'type': 'scope_violation',
+                'medical_advice': False,
+                'response': blocked_response,
+                'reason': reason,
+                'user_type': user_type,
+                'session_id': session_id
+            }), 200  # 200 OK, legitimate response
         
         # System prompt wählen basierend auf user type
         if user_type == 'doctor':
@@ -267,9 +302,12 @@ def help_chat():
         else:
             system_prompt = get_system_prompt_for_guest(current_page)
         
-        # OpenAI API call (mit proxy fix für Render.com)
+        # Add hard medical disclaimer to all system prompts
+        system_prompt += "\n\n🚫 WICHTIG: Du darfst NIEMALS medizinische Fragen beantworten. Beginne jede Antwort mit einem Hinweis."
+        
+        # OpenAI API call (stateless - NO history)
         try:
-            # Proxy-Variablen temporär entfernen
+            # Proxy-Variablen temporär entfernen (Render.com fix)
             proxy_vars = {}
             for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']:
                 if key in os.environ:
@@ -294,9 +332,11 @@ def help_chat():
                 for key, value in proxy_vars.items():
                     os.environ[key] = value
             
+            # ✅ NO HISTORY - only current message
             messages = [
-                {'role': 'system', 'content': system_prompt}
-            ] + chat_history
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': user_message}
+            ]
             
             response = client.chat.completions.create(
                 model=os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview'),
@@ -307,20 +347,15 @@ def help_chat():
             
             assistant_reply = response.choices[0].message.content
             
-            # Response zu history hinzufügen
-            chat_history.append({
-                'role': 'assistant',
-                'content': assistant_reply
-            })
-            
-            # Session aktualisieren
-            session[session_key] = chat_history
-            
+            # Structured response
             return jsonify({
-                'reply': assistant_reply,
+                'type': 'platform_help',
+                'medical_advice': False,  # ALWAYS false
+                'response': assistant_reply,
                 'user_type': user_type,
                 'current_page': current_page,
-                'context_detected': True
+                'session_id': session_id,
+                'disclaimer': 'Dies ist keine medizinische Beratung.'
             })
             
         except Exception as e:
@@ -335,16 +370,17 @@ def help_chat():
 @bp.route('/reset', methods=['POST'])
 def reset_help_chat():
     """
-    Setzt die Chat-History zurück
+    Setzt die Chat-History zurück (NO-OP - Phase 3)
+    
+    ✅ PHASE 3: Sessions are stateless, no history stored
+    
+    Response:
+    {
+        "message": "Sessions sind stateless (keine Historie gespeichert)"
+    }
     """
-    try:
-        context = get_user_context()
-        user_type = context['user_type']
-        session_key = f'help_chat_history_{user_type}'
-        
-        if session_key in session:
-            session.pop(session_key)
-        
-        return jsonify({'message': 'Chat-Verlauf zurückgesetzt'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    # NO-OP: We don't store history anymore
+    return jsonify({
+        'message': 'Sessions sind stateless (keine Historie gespeichert)',
+        'gdpr_compliant': True
+    })

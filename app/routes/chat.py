@@ -138,17 +138,29 @@ def chat_with_practice(practice_id):
     """
     Чат с AI ассистентом практики
     
-    ⚠️ PHASE 3 TODO: Remove history storage, enforce GDPR compliance
+    ✅ PHASE 3: GDPR-compliant - No history storage, hard scope enforcement
     
     Request JSON:
     {
-        "message": "Как до вас добраться?",
-        "session_id": "optional-uuid"  // anonymous session only
+        "message": "Wie komme ich zu Ihrer Praxis?",
+        "session_id": "optional-uuid"  // anonymous session, ephemeral only
     }
     
-    Response JSON:
+    Response JSON (SUCCESS):
     {
-        "reply": "Ответ от ассистента",
+        "type": "platform_help",
+        "medical_advice": false,
+        "response": "Antwort vom Assistenten",
+        "session_id": "uuid",
+        "disclaimer": "Dies ist keine medizinische Beratung..."
+    }
+    
+    Response JSON (BLOCKED):
+    {
+        "type": "scope_violation",
+        "medical_advice": false,
+        "response": "Ich kann keine medizinischen Fragen...",
+        "reason": "contains_forbidden_keyword",
         "session_id": "uuid"
     }
     """
@@ -167,16 +179,31 @@ def chat_with_practice(practice_id):
         if len(user_message) > 1000:
             return jsonify({'error': 'Nachricht ist zu lang (max 1000 Zeichen)'}), 400
         
-        # Session ID (anonymous, no persistent storage)
+        # Session ID (anonymous, ephemeral - no DB storage)
         session_id = data.get('session_id') or str(uuid.uuid4())
+        
+        # ✅ PHASE 3: Pre-validate scope BEFORE enqueuing
+        from app.utils.chatbot_scope import validate_scope
+        
+        is_valid, reason, blocked_response = validate_scope(user_message)
+        
+        if not is_valid:
+            # Return blocked response immediately
+            return jsonify({
+                'type': 'scope_violation',
+                'medical_advice': False,
+                'response': blocked_response,
+                'reason': reason,
+                'session_id': session_id
+            }), 200  # 200 OK, not an error - legitimate response
         
         # Enqueue chatbot processing task (medium priority)
         try:
             from app.workers import default_queue
             from app.workers.chatbot_tasks import process_chatbot_message
             
-            # Enqueue task and wait for result (for now)
-            # TODO Phase 3: Make this fully async with polling or websockets
+            # Enqueue task and wait for result (synchronous for MVP)
+            # ⚠️ TODO Phase 4: Make this fully async with polling or websockets
             job = default_queue.enqueue(
                 process_chatbot_message,
                 user_message,
@@ -194,14 +221,39 @@ def chat_with_practice(practice_id):
                 waited += 0.5
                 job.refresh()
             
-            if job.result and job.result.get('status') == 'success':
-                return jsonify({
-                    'reply': job.result['response'],
-                    'session_id': session_id
-                })
-            else:
-                error_msg = job.result.get('error', 'Unknown error') if job.result else 'Timeout'
+            if job.result:
+                result = job.result
+                
+                # Handle blocked responses from worker
+                if result.get('status') == 'blocked':
+                    return jsonify({
+                        'type': result.get('type', 'scope_violation'),
+                        'medical_advice': False,
+                        'response': result.get('response'),
+                        'reason': result.get('reason'),
+                        'session_id': session_id
+                    }), 200
+                
+                # Handle success responses
+                if result.get('status') == 'success':
+                    return jsonify({
+                        'type': result.get('type', 'platform_help'),
+                        'medical_advice': False,  # ALWAYS false
+                        'response': result.get('response'),
+                        'session_id': session_id,
+                        'disclaimer': result.get('disclaimer', 'Dies ist keine medizinische Beratung.')
+                    }), 200
+                
+                # Handle errors
+                error_msg = result.get('error', 'Unknown error')
                 print(f"Chatbot task failed: {error_msg}")
+                return jsonify({
+                    'error': 'Der Chatbot-Service ist derzeit nicht verfügbar. Bitte kontaktieren Sie die Praxis direkt.',
+                    'code': 'service_unavailable'
+                }), 503
+            else:
+                # Timeout
+                print("Chatbot task timeout")
                 return jsonify({
                     'error': 'Der Chatbot-Service ist derzeit nicht verfügbar. Bitte kontaktieren Sie die Praxis direkt.',
                     'code': 'service_unavailable'
@@ -227,20 +279,22 @@ def chat_with_practice(practice_id):
 @bp.route('/<practice_id>/reset', methods=['POST'])
 def reset_conversation(practice_id):
     """
-    Сброс истории разговора
+    Сброс истории разговора (NO-OP - No history stored in Phase 3)
+    
+    ✅ PHASE 3: Sessions are ephemeral, no persistent storage
     
     Request JSON:
     {
-        "conversation_id": "uuid"
+        "session_id": "uuid"  // ignored, sessions are stateless
+    }
+    
+    Response:
+    {
+        "message": "Sessions sind stateless (keine Historie gespeichert)"
     }
     """
-    data = request.get_json()
-    conversation_id = data.get('conversation_id')
-    
-    if conversation_id:
-        session_key = f'chat_history_{practice_id}_{conversation_id}'
-        if session_key in session:
-            del session[session_key]
-            session.modified = True
-    
-    return jsonify({'message': 'Konversation zurückgesetzt'})
+    # NO-OP: We don't store history anymore
+    return jsonify({
+        'message': 'Sessions sind stateless (keine Historie gespeichert)',
+        'gdpr_compliant': True
+    })
