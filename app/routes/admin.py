@@ -537,13 +537,9 @@ def api_verify_doctor(admin, doctor_id):
     doctor.is_verified = True
     db.session.commit()
     
-    # Enqueue verification notification email (medium priority)
-    try:
-        from app.workers import default_queue
-        from app.workers.notification_tasks import send_doctor_verification_email
-        default_queue.enqueue(send_doctor_verification_email, str(doctor.id))
-    except Exception as e:
-        print(f"Failed to enqueue verification email: {e}")
+    # TODO: Send verification notification email
+    # Note: Email notifications temporarily disabled after Redis removal
+    # Will implement direct email sending in future if needed
     
     return jsonify({
         'message': 'Doctor verified successfully',
