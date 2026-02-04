@@ -257,12 +257,12 @@ def chat_with_practice(practice_id):
                 user_message,
                 practice_id=str(practice.id),
                 session_id=session_id,
-                timeout=30
+                timeout=90  # Increased from 30 to allow OpenAI API timeout (60s) + buffer
             )
             
             # Wait for result (synchronous for MVP, will be async in production)
             import time
-            max_wait = 30
+            max_wait = 75  # Increased from 30 to match OpenAI timeout (60s) + buffer
             waited = 0
             while job.result is None and waited < max_wait:
                 time.sleep(0.5)
@@ -300,11 +300,11 @@ def chat_with_practice(practice_id):
                     'code': 'service_unavailable'
                 }), 503
             else:
-                # Timeout
-                print("Chatbot task timeout")
+                # Timeout - log for debugging
+                print(f"❌ Chatbot task timeout after {max_wait}s - practice={practice.id}, session={session_id}")
                 return jsonify({
                     'error': 'Der Chatbot-Service ist derzeit nicht verfügbar. Bitte kontaktieren Sie die Praxis direkt.',
-                    'code': 'service_unavailable'
+                    'code': 'timeout'
                 }), 503
                 
         except Exception as e:
