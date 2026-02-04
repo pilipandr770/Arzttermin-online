@@ -16,9 +16,9 @@ alembic==1.13.1
 # Stripe Payment
 stripe==7.8.0
 
-# Redis & Celery (background tasks)
+# Redis & RQ (background tasks)
 redis==5.0.1
-celery==5.3.4
+rq==1.16.1
 
 # Email
 python-dotenv==1.0.0

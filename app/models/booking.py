@@ -179,7 +179,7 @@ class Booking(db.Model):
         Отмена бронирования
         
         Args:
-            cancelled_by (str): кто отменяет ('patient' или 'practice')
+            cancelled_by (str): кто отменяет ('patient' або 'practice')
             reason (str): причина отмены
         
         Returns:
@@ -201,12 +201,21 @@ class Booking(db.Model):
         if self.timeslot:
             self.timeslot.status = 'available'
             
-            # Проверяем алерты для этого слота
+            # Enqueue background task for alerts (non-blocking)
             try:
-                from app.services.alert_service import check_and_notify_alerts
-                check_and_notify_alerts(self.timeslot.id)
+                from app.workers import low_priority_queue
+                from app.workers.notification_tasks import check_and_send_slot_alerts
+                low_priority_queue.enqueue(check_and_send_slot_alerts, self.timeslot.id)
             except Exception as e:
-                print(f"Error checking alerts: {e}")
+                print(f"Failed to enqueue alert task: {e}")
+            
+            # Enqueue cancellation notification email (high priority)
+            try:
+                from app.workers import high_priority_queue
+                from app.workers.notification_tasks import send_booking_cancellation_email
+                high_priority_queue.enqueue(send_booking_cancellation_email, str(self.id), cancelled_by)
+            except Exception as e:
+                print(f"Failed to enqueue cancellation email: {e}")
         
         # Обновляем статистику пациента (опционально уменьшаем счетчик)
         # self.patient.total_bookings -= 1  # Можно раскомментировать если нужно

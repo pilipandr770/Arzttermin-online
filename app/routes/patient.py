@@ -456,8 +456,14 @@ def api_book_slot():
     db.session.commit()
     
     print(f"[SUCCESS] Booking created: {booking.id}, code: {booking.booking_code}")
-    
-    return jsonify({
+        # Enqueue confirmation email (high priority, non-blocking)
+    try:
+        from app.workers import high_priority_queue
+        from app.workers.notification_tasks import send_booking_confirmation_email
+        high_priority_queue.enqueue(send_booking_confirmation_email, str(booking.id))
+    except Exception as e:
+        print(f"Failed to enqueue confirmation email: {e}")
+        return jsonify({
         'message': 'Booking created successfully',
         'booking_id': str(booking.id),
         'booking_code': booking.booking_code,

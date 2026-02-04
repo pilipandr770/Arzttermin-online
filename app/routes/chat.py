@@ -138,27 +138,21 @@ def chat_with_practice(practice_id):
     """
     Чат с AI ассистентом практики
     
+    ⚠️ PHASE 3 TODO: Remove history storage, enforce GDPR compliance
+    
     Request JSON:
     {
         "message": "Как до вас добраться?",
-        "conversation_id": "optional-uuid"  // для продолжения беседы
+        "session_id": "optional-uuid"  // anonymous session only
     }
     
     Response JSON:
     {
         "reply": "Ответ от ассистента",
-        "conversation_id": "uuid"
+        "session_id": "uuid"
     }
     """
     try:
-        # Проверяем OpenAI API ключ
-        openai_api_key = os.getenv('OPENAI_API_KEY')
-        if not openai_api_key:
-            return jsonify({
-                'error': 'Der Chatbot-Service ist derzeit nicht verfügbar. Bitte kontaktieren Sie die Praxis direkt.',
-                'code': 'service_unavailable'
-            }), 503
-        
         # Получаем практику
         practice = Practice.query.get(uuid.UUID(practice_id))
         if not practice:
@@ -173,94 +167,53 @@ def chat_with_practice(practice_id):
         if len(user_message) > 1000:
             return jsonify({'error': 'Nachricht ist zu lang (max 1000 Zeichen)'}), 400
         
-        # Conversation ID для истории
-        conversation_id = data.get('conversation_id')
-        if not conversation_id:
-            conversation_id = str(uuid.uuid4())
+        # Session ID (anonymous, no persistent storage)
+        session_id = data.get('session_id') or str(uuid.uuid4())
         
-        # Получаем или создаем историю разговора в сессии
-        session_key = f'chat_history_{practice_id}_{conversation_id}'
-        chat_history = session.get(session_key, [])
-        
-        # Ограничиваем историю последними 10 сообщениями
-        if len(chat_history) > 20:  # 10 пар (user + assistant)
-            chat_history = chat_history[-20:]
-        
-        # Добавляем новое сообщение пользователя
-        chat_history.append({
-            'role': 'user',
-            'content': user_message
-        })
-        
-        # Создаем system prompt
-        system_prompt = get_system_prompt(practice)
-        
-        # Отправляем запрос к OpenAI
+        # Enqueue chatbot processing task (medium priority)
         try:
-            # Сохраняем и удаляем прокси-переменные ДО импорта
-            # Render.com автоматически добавляет HTTP_PROXY, что конфликтует с OpenAI/httpx
-            proxy_vars = {}
-            for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']:
-                if key in os.environ:
-                    proxy_vars[key] = os.environ[key]
-                    del os.environ[key]
+            from app.workers import default_queue
+            from app.workers.chatbot_tasks import process_chatbot_message
             
-            try:
-                # Импортируем OpenAI ПОСЛЕ очистки переменных окружения
-                from openai import OpenAI
-                import httpx
-                
-                # Создаем httpx клиент без прокси явно
-                http_client = httpx.Client(
-                    timeout=30.0,
-                    follow_redirects=True
-                )
-                
-                # Создаем OpenAI client с нашим httpx клиентом
-                client = OpenAI(
-                    api_key=openai_api_key,
-                    http_client=http_client
-                )
-            finally:
-                # Восстанавливаем прокси-переменные
-                for key, value in proxy_vars.items():
-                    os.environ[key] = value
-            
-            messages = [
-                {'role': 'system', 'content': system_prompt}
-            ] + chat_history
-            
-            response = client.chat.completions.create(
-                model=os.getenv('OPENAI_MODEL', 'gpt-4-turbo-preview'),
-                messages=messages,
-                max_tokens=500,
-                temperature=0.7
+            # Enqueue task and wait for result (for now)
+            # TODO Phase 3: Make this fully async with polling or websockets
+            job = default_queue.enqueue(
+                process_chatbot_message,
+                user_message,
+                practice_id=str(practice.id),
+                session_id=session_id,
+                timeout=30
             )
             
-            assistant_reply = response.choices[0].message.content
+            # Wait for result (synchronous for MVP, will be async in production)
+            import time
+            max_wait = 30
+            waited = 0
+            while job.result is None and waited < max_wait:
+                time.sleep(0.5)
+                waited += 0.5
+                job.refresh()
             
-            # Добавляем ответ в историю
-            chat_history.append({
-                'role': 'assistant',
-                'content': assistant_reply
-            })
-            
-            # Сохраняем историю в сессии
-            session[session_key] = chat_history
-            session.modified = True
-            
-            return jsonify({
-                'reply': assistant_reply,
-                'conversation_id': conversation_id
-            })
-            
+            if job.result and job.result.get('status') == 'success':
+                return jsonify({
+                    'reply': job.result['response'],
+                    'session_id': session_id
+                })
+            else:
+                error_msg = job.result.get('error', 'Unknown error') if job.result else 'Timeout'
+                print(f"Chatbot task failed: {error_msg}")
+                return jsonify({
+                    'error': 'Der Chatbot-Service ist derzeit nicht verfügbar. Bitte kontaktieren Sie die Praxis direkt.',
+                    'code': 'service_unavailable'
+                }), 503
+                
         except Exception as e:
-            print(f"OpenAI API error: {e}")
+            print(f"Failed to enqueue chatbot task: {e}")
             return jsonify({
-                'error': 'Entschuldigung, ich konnte Ihre Anfrage nicht bearbeiten. Bitte versuchen Sie es später erneut.',
-                'code': 'api_error'
+                'error': 'Ein unerwarteter Fehler ist aufgetreten',
+                'code': 'server_error'
             }), 500
-    
+            
     except ValueError:
         return jsonify({'error': 'Ungültige Praxis-ID'}), 400
     except Exception as e:
