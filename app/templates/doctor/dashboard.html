@@ -115,19 +115,34 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{{ url_for('doctor_web.bookings') }}" class="btn btn-outline-primary">
+                        <a href="{{ url_for('doctor_web.bookings') }}" class="btn btn-outline-primary"
+                           data-voice-nav="manage-bookings-btn"
+                           data-voice-title="Buchungen verwalten"
+                           data-voice-description="Verwalte alle Patientenbuchungen">
                             <i class="bi bi-calendar-check"></i> Buchungen verwalten
                         </a>
-                        <a href="{{ url_for('doctor_web.calendar') }}" class="btn btn-outline-success">
+                        <a href="{{ url_for('doctor_web.calendar') }}" class="btn btn-outline-success"
+                           data-voice-nav="manage-calendar-btn"
+                           data-voice-title="Kalender verwalten"
+                           data-voice-description="Verwalte deinen Terminkalender">
                             <i class="bi bi-calendar"></i> Kalender verwalten
                         </a>
-                        <a href="{{ url_for('doctor_web.calendar_integrations') }}" class="btn btn-outline-info">
+                        <a href="{{ url_for('doctor_web.calendar_integrations') }}" class="btn btn-outline-info"
+                           data-voice-nav="calendar-integrations-btn"
+                           data-voice-title="Kalenderintegrationen"
+                           data-voice-description="Integriere externe Kalender">
                             <i class="bi bi-calendar-plus"></i> Kalenderintegrationen
                         </a>
-                        <a href="{{ url_for('practice.practice_profile') }}" class="btn btn-outline-warning">
+                        <a href="{{ url_for('practice.practice_profile') }}" class="btn btn-outline-warning"
+                           data-voice-nav="practice-profile-btn"
+                           data-voice-title="Praxis Profil"
+                           data-voice-description="Bearbeite dein Praxisprofil">
                             <i class="bi bi-hospital"></i> Erweiterte Praxis Profil
                         </a>
-                        <a href="{{ url_for('doctor_web.profile') }}" class="btn btn-outline-secondary">
+                        <a href="{{ url_for('doctor_web.profile') }}" class="btn btn-outline-secondary"
+                           data-voice-nav="doctor-profile-btn"
+                           data-voice-title="Arzt Profil"
+                           data-voice-description="Bearbeite dein persönliches Profil">
                             <i class="bi bi-person"></i> Profil
                         </a>
                     </div>

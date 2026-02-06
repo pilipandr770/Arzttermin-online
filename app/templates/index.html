@@ -8,7 +8,10 @@
                 <h1 class="display-4 fw-bold">TerminFinder</h1>
                 <p class="lead">KI-gestützte Terminbuchung für Ärzte in Deutschland</p>
                 <p class="mb-4">Intelligente System mit automatischen Benachrichtigungen, Stripe-Zahlungen und No-Show-Schutz.</p>
-                <a href="#user-type" class="btn btn-light btn-lg">Jetzt starten</a>
+                <a href="#user-type" class="btn btn-light btn-lg" 
+                   data-voice-nav="start-btn"
+                   data-voice-title="Jetzt starten Button"
+                   data-voice-description="Starte jetzt mit TerminFinder als Patient oder Arzt">Jetzt starten</a>
             </div>
             <div class="col-lg-6">
                 <img src="{{ url_for('static', filename='images/hero-image.png') }}" alt="TerminFinder Hero" class="img-fluid rounded shadow">
@@ -84,10 +87,16 @@
                         </div>
                         <h5 class="card-title mb-3">Für Patienten</h5>
                         <p class="card-text text-muted mb-4">Finden Sie schnell freie Termine bei Ärzten in Ihrer Nähe. Einfache Registrierung mit Verifizierung.</p>
-                        <a href="{{ url_for('auth_web.patient_login') }}" class="btn btn-primary btn-lg w-100 mb-2">
+                        <a href="{{ url_for('auth_web.patient_login') }}" class="btn btn-primary btn-lg w-100 mb-2"
+                           data-voice-nav="patient-login-btn"
+                           data-voice-title="Patient Anmelden"
+                           data-voice-description="Melde dich als Patient an um Arzttermine zu buchen">
                             <i class="bi bi-box-arrow-in-right me-2"></i>Als Patient anmelden
                         </a>
-                        <small class="text-muted">Noch kein Konto? <a href="{{ url_for('auth_web.patient_register') }}" class="text-primary fw-bold">Registrieren</a></small>
+                        <small class="text-muted">Noch kein Konto? <a href="{{ url_for('auth_web.patient_register') }}" class="text-primary fw-bold"
+                           data-voice-nav="patient-register-link"
+                           data-voice-title="Patient Registrieren"
+                           data-voice-description="Registriere dich als neuer Patient">Registrieren</a></small>
                     </div>
                 </div>
             </div>
@@ -99,10 +108,16 @@
                         </div>
                         <h5 class="card-title mb-3">Für Ärzte</h5>
                         <p class="card-text text-muted mb-4">Verwalten Sie Ihre Termine effizient. Vollständige Verifizierung erforderlich.</p>
-                        <a href="{{ url_for('auth_web.doctor_login') }}" class="btn btn-success btn-lg w-100 mb-2">
+                        <a href="{{ url_for('auth_web.doctor_login') }}" class="btn btn-success btn-lg w-100 mb-2"
+                           data-voice-nav="doctor-login-btn"
+                           data-voice-title="Arzt Anmelden"
+                           data-voice-description="Login Seite für Ärzte">
                             <i class="bi bi-box-arrow-in-right me-2"></i>Als Arzt anmelden
                         </a>
-                        <small class="text-muted">Noch kein Konto? <a href="{{ url_for('auth_web.doctor_register') }}" class="text-success fw-bold">Registrieren</a></small>
+                        <small class="text-muted">Noch kein Konto? <a href="{{ url_for('auth_web.doctor_register') }}" class="text-success fw-bold"
+                           data-voice-nav="doctor-register-link"
+                           data-voice-title="Arzt Registrieren"
+                           data-voice-description="Registriere dich als neuer Arzt">Registrieren</a></small>
                     </div>
                 </div>
             </div>

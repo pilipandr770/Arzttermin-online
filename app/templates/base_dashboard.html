@@ -22,62 +22,95 @@
                 <!-- Navigation -->
                 <ul class="nav flex-column">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('patient_web.dashboard') if user_type == 'patient' else url_for('doctor_web.dashboard') }}">
+                        <a class="nav-link" href="{{ url_for('patient_web.dashboard') if user_type == 'patient' else url_for('doctor_web.dashboard') }}"
+                           data-voice-nav="nav-dashboard"
+                           data-voice-title="Dashboard"
+                           data-voice-description="Gehe zum Dashboard">
                             <i class="bi bi-house-door"></i> Dashboard
                         </a>
                     </li>
                     
                     {% if user_type == 'patient' %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('patient_web.search') }}">
+                        <a class="nav-link" href="{{ url_for('patient_web.search') }}"
+                           data-voice-nav="nav-search"
+                           data-voice-title="Arzt suchen"
+                           data-voice-description="Gehe zur Arztsuche">
                             <i class="bi bi-search"></i> Arzt suchen
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('patient_web.calendar') }}">
+                        <a class="nav-link" href="{{ url_for('patient_web.calendar') }}"
+                           data-voice-nav="nav-calendar"
+                           data-voice-title="Termine finden"
+                           data-voice-description="Zeige verfügbare Termine">
                             <i class="bi bi-calendar"></i> Termine finden
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('patient_web.bookings') }}">
+                        <a class="nav-link" href="{{ url_for('patient_web.bookings') }}"
+                           data-voice-nav="nav-bookings"
+                           data-voice-title="Meine Buchungen"
+                           data-voice-description="Zeige meine gebuchten Termine">
                             <i class="bi bi-calendar-check"></i> Meine Buchungen
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('patient_web.profile') }}">
+                        <a class="nav-link" href="{{ url_for('patient_web.profile') }}"
+                           data-voice-nav="nav-profile"
+                           data-voice-title="Patientenprofil"
+                           data-voice-description="Bearbeite mein Profil">
                             <i class="bi bi-person"></i> Profil
                         </a>
                     </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('doctor_web.calendar') }}">
+                        <a class="nav-link" href="{{ url_for('doctor_web.calendar') }}"
+                           data-voice-nav="nav-doctor-calendar"
+                           data-voice-title="Kalender"
+                           data-voice-description="Verwalte deinen Kalender">
                             <i class="bi bi-calendar"></i> Kalender
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('doctor_web.calendar_integrations') }}">
+                        <a class="nav-link" href="{{ url_for('doctor_web.calendar_integrations') }}"
+                           data-voice-nav="nav-doctor-integrations"
+                           data-voice-title="Kalenderintegrationen"
+                           data-voice-description="Integriere externe Kalender">
                             <i class="bi bi-calendar-plus"></i> Kalenderintegrationen
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('doctor_web.bookings') }}">
+                        <a class="nav-link" href="{{ url_for('doctor_web.bookings') }}"
+                           data-voice-nav="nav-doctor-bookings"
+                           data-voice-title="Termine"
+                           data-voice-description="Verwalte Patiententermine">
                             <i class="bi bi-calendar-check"></i> Termine
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('practice.practice_profile') }}">
+                        <a class="nav-link" href="{{ url_for('practice.practice_profile') }}"
+                           data-voice-nav="nav-practice-profile"
+                           data-voice-title="Praxisprofil"
+                           data-voice-description="Bearbeite dein erweitertes Praxisprofil">
                             <i class="bi bi-hospital"></i> Erweiterte Praxis Profil
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('doctor_web.profile') }}">
+                        <a class="nav-link" href="{{ url_for('doctor_web.profile') }}"
+                           data-voice-nav="nav-doctor-profile"
+                           data-voice-title="Arztprofil"
+                           data-voice-description="Bearbeite dein Profil">
                             <i class="bi bi-person"></i> Profil
                         </a>
                     </li>
                     {% endif %}
                     
                     <li class="nav-item mt-4 pt-3 border-top">
-                        <a class="nav-link text-danger" href="#" onclick="logout()">
+                        <a class="nav-link text-danger" href="#" onclick="logout()"
+                           data-voice-nav="nav-logout"
+                           data-voice-title="Abmelden"
+                           data-voice-description="Melde dich ab">
                             <i class="bi bi-box-arrow-right"></i> Abmelden
                         </a>
                     </li>

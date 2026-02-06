@@ -15,7 +15,10 @@
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label">Spezialisierung</label>
-                            <select class="form-select" id="search-speciality">
+                            <select class="form-select" id="search-speciality"
+                                    data-voice-nav="search-speciality"
+                                    data-voice-title="Spezialisierung"
+                                    data-voice-description="Wähle die Fachrichtung des Arztes">
                                 <option value="">Alle Spezialisierungen</option>
                                 {% for key, spec in specialities.items() %}
                                 <option value="{{ key }}">{{ spec.de }}</option>
@@ -25,21 +28,33 @@
                         <div class="col-md-4">
                             <label class="form-label">Stadt</label>
                             <div class="position-relative">
-                                <input type="text" class="form-control" id="search-city" placeholder="Stadt eingeben" autocomplete="off">
+                                <input type="text" class="form-control" id="search-city" placeholder="Stadt eingeben" autocomplete="off"
+                                       data-voice-nav="search-city"
+                                       data-voice-title="Stadt"
+                                       data-voice-description="Gib die Stadt ein">
                                 <div id="city-autocomplete" class="list-group position-absolute w-100" style="z-index: 1000; display: none; max-height: 300px; overflow-y: auto;"></div>
                             </div>
                             <small class="text-muted">
-                                <button type="button" class="btn btn-link btn-sm p-0" onclick="getUserLocation()">
+                                <button type="button" class="btn btn-link btn-sm p-0" onclick="getUserLocation()"
+                                        data-voice-nav="use-location-btn"
+                                        data-voice-title="Standort verwenden"
+                                        data-voice-description="Verwende meinen aktuellen Standort">
                                     <i class="bi bi-geo-alt"></i> Meinen Standort verwenden
                                 </button>
                             </small>
                         </div>
                     </div>
                     <div class="mt-3">
-                        <button class="btn btn-primary" onclick="searchDoctors()">
+                        <button class="btn btn-primary" onclick="searchDoctors()"
+                                data-voice-nav="search-btn"
+                                data-voice-title="Suchen"
+                                data-voice-description="Starte die Arztsuche">
                             <i class="bi bi-search"></i> Suchen
                         </button>
-                        <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                        <button class="btn btn-outline-secondary" onclick="clearFilters()"
+                                data-voice-nav="clear-filters-btn"
+                                data-voice-title="Filter löschen"
+                                data-voice-description="Lösche alle Suchfilter">
                             <i class="bi bi-x-circle"></i> Filter löschen
                         </button>
                     </div>

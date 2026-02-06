@@ -381,20 +381,34 @@ class VoiceNavigationSystem {
             // Show transcript
             this.showTranscript(`Sie: ${text}`);
             
-            // Step 2: Process with Help Chatbot
-            const chatResponse = await this.processWithChatbot(text, language);
-            
-            if (!chatResponse.response) {
-                throw new Error('No response from chatbot');
+            // Step 2: Process with Voice UI Controller
+            if (window.voiceUIController) {
+                const result = await window.voiceUIController.executeCommand(text);
+                console.log('🎯 Command result:', result);
+                
+                if (result.success && result.action === 'page_navigation') {
+                    // Navigate to page
+                    this.showTranscript(`Assistent: ${result.message}`);
+                    result.execute();
+                    return; // Stop here, page will reload
+                    
+                } else if (result.success && (result.action === 'element_highlight' || result.action === 'element_click')) {
+                    // Element found and highlighted/clicked
+                    this.showTranscript(`Assistent: ${result.message}`);
+                    
+                    // Speak the response
+                    await this.synthesizeSpeech(result.message, language);
+                    return; // Done
+                    
+                } else if (result.fallbackToChatbot || !result.success) {
+                    // Fall back to chatbot for explanation
+                    await this.handleQuestion(text, language);
+                    return;
+                }
+            } else {
+                // No UI controller, use chatbot
+                await this.handleQuestion(text, language);
             }
-            
-            console.log('💬 Chatbot response:', chatResponse.response);
-            
-            // Show response
-            this.showTranscript(`Assistent: ${chatResponse.response}`);
-            
-            // Step 3: Synthesize speech with TTS
-            await this.synthesizeSpeech(chatResponse.response, language);
             
             // Success
             this.showStatus('✅ Fertig!', 2000);
@@ -429,6 +443,26 @@ class VoiceNavigationSystem {
         }
         
         return await response.json();
+    }
+    
+    /**
+     * Handle question with Help Chatbot
+     */
+    async handleQuestion(text, language) {
+        // Process with Help Chatbot
+        const chatResponse = await this.processWithChatbot(text, language);
+        
+        if (!chatResponse.response) {
+            throw new Error('No response from chatbot');
+        }
+        
+        console.log('💬 Chatbot response:', chatResponse.response);
+        
+        // Show response
+        this.showTranscript(`Assistent: ${chatResponse.response}`);
+        
+        // Synthesize speech with TTS
+        await this.synthesizeSpeech(chatResponse.response, language);
     }
     
     /**
