@@ -79,6 +79,9 @@
                 <input type="text" id="helpChatInput" class="form-control" 
                        placeholder="Deine Frage..." 
                        onkeypress="if(event.key==='Enter') sendHelpMessage()">
+                <button id="helpChatVoiceBtn" class="btn btn-voice" onclick="toggleHelpChatVoice()" title="Spracheingabe">
+                    <i class="bi bi-mic-fill"></i>
+                </button>
                 <button class="btn btn-primary" onclick="sendHelpMessage()">
                     <i class="bi bi-send-fill"></i>
                 </button>
@@ -218,6 +221,38 @@
             padding: 0;
         }
 
+        .help-chat-input .btn-voice {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .help-chat-input .btn-voice:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .help-chat-input .btn-voice.recording {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            animation: pulse-btn 1.5s ease-in-out infinite;
+        }
+
+        .help-chat-input .btn-voice.processing {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            animation: spin-btn 2s linear infinite;
+        }
+
+        @keyframes pulse-btn {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes spin-btn {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         @media (max-width: 576px) {
             .help-chat-window {
                 width: calc(100vw - 40px);
@@ -350,6 +385,264 @@
             } catch (error) {
                 console.error('Reset error:', error);
             }
+        }
+
+        // Voice navigation integration with Help Chat
+        let isHelpChatRecording = false;
+        let helpChatMediaRecorder = null;
+        let helpChatAudioChunks = [];
+        let currentHelpChatAudio = null;
+
+        async function toggleHelpChatVoice() {
+            if (isHelpChatRecording) {
+                stopHelpChatRecording();
+            } else {
+                await startHelpChatRecording();
+            }
+        }
+
+        async function startHelpChatRecording() {
+            try {
+                // Check if browser supports MediaRecorder
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert('Dein Browser unterstützt keine Sprachaufnahme.');
+                    return;
+                }
+
+                // Request microphone access
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 44100
+                    } 
+                });
+
+                // Get supported MIME type
+                const mimeType = getSupportedMimeType();
+                helpChatMediaRecorder = new MediaRecorder(stream, { mimeType });
+                helpChatAudioChunks = [];
+
+                // Event handlers
+                helpChatMediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        helpChatAudioChunks.push(event.data);
+                    }
+                };
+
+                helpChatMediaRecorder.onstop = () => {
+                    processHelpChatRecording();
+                };
+
+                // Start recording
+                helpChatMediaRecorder.start();
+                isHelpChatRecording = true;
+
+                // Update UI
+                const voiceBtn = document.getElementById('helpChatVoiceBtn');
+                voiceBtn.classList.add('recording');
+                voiceBtn.title = 'Aufnahme beenden';
+                voiceBtn.innerHTML = '<i class="bi bi-mic-fill"></i>';
+
+                console.log('🎤 Help Chat recording started');
+
+                // Auto-stop after 30 seconds
+                setTimeout(() => {
+                    if (isHelpChatRecording) {
+                        stopHelpChatRecording();
+                    }
+                }, 30000);
+
+            } catch (error) {
+                console.error('❌ Microphone access denied:', error);
+                alert('Mikrofonzugriff verweigert. Bitte erlaube den Zugriff in deinen Browser-Einstellungen.');
+            }
+        }
+
+        function stopHelpChatRecording() {
+            if (helpChatMediaRecorder && isHelpChatRecording) {
+                helpChatMediaRecorder.stop();
+                isHelpChatRecording = false;
+
+                // Stop all tracks
+                helpChatMediaRecorder.stream.getTracks().forEach(track => track.stop());
+
+                // Update UI
+                const voiceBtn = document.getElementById('helpChatVoiceBtn');
+                voiceBtn.classList.remove('recording');
+                voiceBtn.classList.add('processing');
+                voiceBtn.disabled = true;
+                voiceBtn.title = 'Verarbeitung...';
+
+                console.log('🛑 Help Chat recording stopped');
+            }
+        }
+
+        async function processHelpChatRecording() {
+            try {
+                // Create audio blob
+                const mimeType = helpChatMediaRecorder.mimeType;
+                const audioBlob = new Blob(helpChatAudioChunks, { type: mimeType });
+
+                console.log('📦 Audio blob created:', {
+                    size: audioBlob.size,
+                    type: audioBlob.type
+                });
+
+                // Show processing message
+                const processingId = addHelpChatMessage('🎤 Verarbeite Spracheingabe...', 'assistant', true);
+
+                // Step 1: Transcribe with Whisper API
+                const transcription = await transcribeHelpChatAudio(audioBlob);
+
+                if (!transcription.success) {
+                    throw new Error(transcription.error || 'Transcription failed');
+                }
+
+                const { text, language } = transcription;
+                console.log('📝 Transcribed:', text, '(Language:', language + ')');
+
+                // Remove processing message
+                document.getElementById(processingId)?.remove();
+
+                // Add transcribed text as user message
+                addHelpChatMessage(text, 'user');
+
+                // Show typing indicator
+                const typingId = addHelpChatMessage('Schreibt...', 'assistant', true);
+
+                // Step 2: Process with Help Chatbot
+                const chatResponse = await fetch('/api/help-chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: text,
+                        current_page: window.location.pathname,
+                        language: language,
+                        voice_mode: true
+                    })
+                });
+
+                if (!chatResponse.ok) {
+                    throw new Error('Chatbot error');
+                }
+
+                const chatData = await chatResponse.json();
+
+                // Remove typing indicator
+                document.getElementById(typingId)?.remove();
+
+                console.log('💬 Chatbot response:', chatData.response);
+
+                // Add response to chat
+                addHelpChatMessage(chatData.response, 'assistant');
+
+                // Step 3: Synthesize speech with TTS
+                await synthesizeHelpChatSpeech(chatData.response, language);
+
+            } catch (error) {
+                console.error('❌ Processing error:', error);
+                addHelpChatMessage('❌ Fehler bei der Verarbeitung: ' + error.message, 'assistant');
+
+            } finally {
+                // Reset UI
+                const voiceBtn = document.getElementById('helpChatVoiceBtn');
+                voiceBtn.classList.remove('processing');
+                voiceBtn.disabled = false;
+                voiceBtn.title = 'Spracheingabe';
+                voiceBtn.innerHTML = '<i class="bi bi-mic-fill"></i>';
+            }
+        }
+
+        async function transcribeHelpChatAudio(audioBlob) {
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'recording.webm');
+
+            const response = await fetch('/api/voice-transcribe', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Transcription failed');
+            }
+
+            return await response.json();
+        }
+
+        async function synthesizeHelpChatSpeech(text, language) {
+            const response = await fetch('/api/voice-synthesize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    language: language
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Speech synthesis failed');
+            }
+
+            // Get audio blob
+            const audioBlob = await response.blob();
+
+            // Play audio
+            await playHelpChatAudio(audioBlob);
+        }
+
+        async function playHelpChatAudio(audioBlob) {
+            return new Promise((resolve, reject) => {
+                // Stop current audio if playing
+                if (currentHelpChatAudio) {
+                    currentHelpChatAudio.pause();
+                    currentHelpChatAudio = null;
+                }
+
+                // Create audio element
+                const audioUrl = URL.createObjectURL(audioBlob);
+                currentHelpChatAudio = new Audio(audioUrl);
+
+                currentHelpChatAudio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    currentHelpChatAudio = null;
+                    resolve();
+                };
+
+                currentHelpChatAudio.onerror = (error) => {
+                    URL.revokeObjectURL(audioUrl);
+                    currentHelpChatAudio = null;
+                    reject(error);
+                };
+
+                // Play
+                currentHelpChatAudio.play().catch(reject);
+                console.log('🔊 Playing audio...');
+            });
+        }
+
+        function getSupportedMimeType() {
+            const types = [
+                'audio/webm;codecs=opus',
+                'audio/webm',
+                'audio/ogg;codecs=opus',
+                'audio/mp4',
+                'audio/mpeg'
+            ];
+
+            for (const type of types) {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    return type;
+                }
+            }
+
+            return ''; // Browser will use default
         }
     </script>
 

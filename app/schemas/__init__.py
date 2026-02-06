@@ -50,7 +50,7 @@ class PatientLoginSchema(Schema):
     phone = fields.Str(required=True, validate=validate.Length(min=7, max=20))
     
     @validates('phone')
-    def validate_phone(self, value):
+    def validate_phone(self, value, **kwargs):
         # Remove spaces and common separators
         clean_phone = re.sub(r'[\s\-\(\)]+', '', value)
         
@@ -69,7 +69,7 @@ class PatientRegisterSchema(Schema):
     email = EmailField()
     
     @validates('phone')
-    def validate_phone(self, value):
+    def validate_phone(self, value, **kwargs):
         clean_phone = re.sub(r'[\s\-\(\)]+', '', value)
         if not re.match(r'^\+?[\d]+$', clean_phone):
             raise ValidationError('Ungültiges Telefonnummernformat')
@@ -93,7 +93,7 @@ class DoctorRegisterSchema(Schema):
     practice_id = fields.Str()
     
     @validates('password')
-    def validate_password(self, value):
+    def validate_password(self, value, **kwargs):
         return PasswordValidator.validate(value)
 
 
