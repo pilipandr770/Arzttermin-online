@@ -446,7 +446,7 @@ class VoiceUIController {
         
         if (!targetElement) {
             // For general "do something" commands, suggest key actions on current page
-            if (action === 'action' && keywords.length === 0) {
+            if (action === 'action' || action === 'highlight') {
                 return await this.suggestActions();
             }
             

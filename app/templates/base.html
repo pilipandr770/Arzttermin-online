@@ -528,10 +528,39 @@
                 // Add transcribed text as user message
                 addHelpChatMessage(text, 'user');
 
+                // Step 2: Try Voice UI Controller first
+                if (window.voiceUIController) {
+                    const result = await window.voiceUIController.executeCommand(text);
+                    console.log('🎯 UI Controller result:', result);
+
+                    if (result.success && result.action === 'page_navigation') {
+                        // Navigate to page
+                        addHelpChatMessage(result.message, 'assistant');
+                        result.execute();
+                        return; // Page will reload
+                        
+                    } else if (result.success && [
+                        'element_highlight', 
+                        'element_click', 
+                        'element_focus', 
+                        'element_action',
+                        'suggest_action'
+                    ].includes(result.action)) {
+                        // Element action successful
+                        addHelpChatMessage(result.message, 'assistant');
+                        
+                        // Synthesize speech
+                        await synthesizeHelpChatSpeech(result.message, language);
+                        return; // Done
+                    }
+                    
+                    // If not successful or needs explanation, continue to chatbot
+                }
+
                 // Show typing indicator
                 const typingId = addHelpChatMessage('Schreibt...', 'assistant', true);
 
-                // Step 2: Process with Help Chatbot
+                // Step 3: Process with Help Chatbot
                 const chatResponse = await fetch('/api/help-chat', {
                     method: 'POST',
                     headers: {
@@ -559,7 +588,7 @@
                 // Add response to chat
                 addHelpChatMessage(chatData.response, 'assistant');
 
-                // Step 3: Synthesize speech with TTS
+                // Step 4: Synthesize speech with TTS
                 await synthesizeHelpChatSpeech(chatData.response, language);
 
             } catch (error) {

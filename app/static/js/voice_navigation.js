@@ -392,16 +392,22 @@ class VoiceNavigationSystem {
                     result.execute();
                     return; // Stop here, page will reload
                     
-                } else if (result.success && (result.action === 'element_highlight' || result.action === 'element_click')) {
-                    // Element found and highlighted/clicked
+                } else if (result.success && [
+                    'element_highlight', 
+                    'element_click', 
+                    'element_focus', 
+                    'element_action',
+                    'suggest_action'
+                ].includes(result.action)) {
+                    // Element found and highlighted/clicked/suggested
                     this.showTranscript(`Assistent: ${result.message}`);
                     
                     // Speak the response
                     await this.synthesizeSpeech(result.message, language);
                     return; // Done
                     
-                } else if (result.fallbackToChatbot || !result.success) {
-                    // Fall back to chatbot for explanation
+                } else if (result.action === 'chatbot_explain' || !result.success) {
+                    // Fall back to chatbot for explanation or if command failed
                     await this.handleQuestion(text, language);
                     return;
                 }
