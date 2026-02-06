@@ -14,8 +14,36 @@ import tempfile
 
 voice_bp = Blueprint('voice', __name__)
 
-# OpenAI client
-client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+def get_openai_client():
+    """
+    Create OpenAI client with Render.com proxy workaround
+    """
+    # Proxy-Variablen temporär entfernen (Render.com fix)
+    proxy_vars = {}
+    for key in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy']:
+        if key in os.environ:
+            proxy_vars[key] = os.environ[key]
+            del os.environ[key]
+    
+    try:
+        import httpx
+        
+        http_client = httpx.Client(
+            timeout=30.0,
+            follow_redirects=True
+        )
+        
+        client = openai.OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY'),
+            http_client=http_client
+        )
+        
+        return client
+    finally:
+        # Proxy-Variablen wiederherstellen
+        for key, value in proxy_vars.items():
+            os.environ[key] = value
 
 
 @voice_bp.route('/api/voice-transcribe', methods=['POST'])
@@ -45,6 +73,9 @@ def transcribe_audio():
             temp_audio_path = temp_audio.name
         
         try:
+            # Get OpenAI client
+            client = get_openai_client()
+            
             # Transcribe with Whisper API
             with open(temp_audio_path, 'rb') as audio:
                 transcript = client.audio.transcriptions.create(
@@ -113,6 +144,9 @@ def synthesize_speech():
         }
         
         voice = voice_map.get(language, 'alloy')
+        
+        # Get OpenAI client
+        client = get_openai_client()
         
         # Generate speech with OpenAI TTS
         response = client.audio.speech.create(
