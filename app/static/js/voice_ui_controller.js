@@ -16,20 +16,51 @@ class VoiceUIController {
         this.currentPage = window.location.pathname;
         this.userType = this.detectUserType();
         
-        // Navigation map: keyword → page URL
+        // Navigation map: keyword → page URL (Multi-language)
         this.pageMap = {
-            // Patient pages
+            // Patient pages - German
             'suche': '/patient/search',
             'arztsuche': '/patient/search',
-            'search': '/patient/search',
             'ärzte finden': '/patient/search',
             'termine': '/patient/bookings',
             'buchungen': '/patient/bookings',
             'meine termine': '/patient/bookings',
-            'bookings': '/patient/bookings',
             'profil': '/patient/profile',
             'einstellungen': '/patient/profile',
             'dashboard': '/patient/dashboard',
+            
+            // Patient pages - English
+            'search': '/patient/search',
+            'doctor search': '/patient/search',
+            'find doctors': '/patient/search',
+            'appointments': '/patient/bookings',
+            'bookings': '/patient/bookings',
+            'my appointments': '/patient/bookings',
+            'profile': '/patient/profile',
+            'settings': '/patient/profile',
+            
+            // Patient pages - Russian
+            'поиск': '/patient/search',
+            'поиск врачей': '/patient/search',
+            'найти врача': '/patient/search',
+            'записи': '/patient/bookings',
+            'мои записи': '/patient/bookings',
+            'профиль': '/patient/profile',
+            'настройки': '/patient/profile',
+            
+            // Patient pages - Ukrainian
+            'пошук': '/patient/search',
+            'пошук лікарів': '/patient/search',
+            'записи': '/patient/bookings',
+            'мої записи': '/patient/bookings',
+            'профіль': '/patient/profile',
+            
+            // Patient pages - Arabic
+            'بحث': '/patient/search',
+            'بحث عن طبيب': '/patient/search',
+            'مواعيد': '/patient/bookings',
+            'حجوزاتي': '/patient/bookings',
+            'الملف الشخصي': '/patient/profile',
             
             // Doctor pages
             'praxis profil': '/practice/profile',
@@ -40,6 +71,8 @@ class VoiceUIController {
             'verfügbarkeiten': '/doctor/calendar',
             'patienten termine': '/doctor/bookings',
             'arzt dashboard': '/doctor/dashboard',
+            'календарь': '/doctor/calendar',
+            'профиль практики': '/practice/profile',
             
             // Auth pages
             'anmelden': '/patient/login',
@@ -47,7 +80,11 @@ class VoiceUIController {
             'registrieren': '/patient/register',
             'register': '/patient/register',
             'arzt login': '/doctor/login',
-            'doctor login': '/doctor/login'
+            'doctor login': '/doctor/login',
+            'вход': '/patient/login',
+            'войти': '/patient/login',
+            'регистрация': '/patient/register',
+            'зарегистрироваться': '/patient/register'
         };
         
         // Element keywords map
@@ -158,21 +195,73 @@ class VoiceUIController {
         const text = transcript.toLowerCase().trim();
         const words = text.split(/\s+/);
         
-        // Detect intent patterns
+        // Detect intent patterns (Multi-language)
         const navigationPatterns = [
-            /^(gehe? zu|zeige?|öffne?|navigiere zu|go to|show|open)/i,
-            /^(wo ist|wo finde ich|where is|find)/i
+            // German
+            /^(gehe? zu|zeige?|öffne?|navigiere zu)/i,
+            /^(wo ist|wo finde ich)/i,
+            // English
+            /^(go to|show|open|navigate to)/i,
+            /^(where is|find)/i,
+            // Russian
+            /^(покажи|открой|перейди|переключи)/i,
+            /^(где|найди|покажи|открой)/i,
+            /переключи.*(страниц|интерфейс)/i,
+            // Ukrainian
+            /^(покажи|відкрий|перейди)/i,
+            // Arabic
+            /^(أرني|افتح|انتقل)/i,
+            // Turkish
+            /^(göster|aç|git)/i,
+            // Polish
+            /^(pokaż|otwórz|idź)/i
         ];
         
         const actionPatterns = [
-            /^(klick|drücke?|klicke auf|click|press|tap)/i,
-            /^(fülle? aus|eingeben|type|fill|enter)/i,
-            /^(buche?|reserviere?|book|reserve)/i
+            // German
+            /^(klick|drücke?|klicke auf)/i,
+            /^(fülle? aus|eingeben)/i,
+            /^(buche?|reserviere?)/i,
+            // English
+            /^(click|press|tap)/i,
+            /^(type|fill|enter)/i,
+            /^(book|reserve)/i,
+            // Russian
+            /^(кликни|нажми|щёлкни)/i,
+            /^(заполни|введи|набери)/i,
+            /^(забронируй|запиши)/i,
+            /подсвети.*(функци|элемент)/i,
+            /сделай.*(что|действие)/i,
+            // Ukrainian
+            /^(клікни|натисни)/i,
+            /^(заповни|введи)/i,
+            // Arabic
+            /^(انقر|اضغط)/i,
+            /^(احجز)/i,
+            // Turkish
+            /^(tıkla|bas)/i,
+            // Polish
+            /^(kliknij|naciśnij)/i
         ];
         
         const explainPatterns = [
-            /^(wie|was|warum|erkläre|erklär|how|what|why|explain)/i,
-            /^(hilfe|help|info|information)/i
+            // German
+            /^(wie|was|warum|erkläre|erklär)/i,
+            /^(hilfe|info|information)/i,
+            // English
+            /^(how|what|why|explain)/i,
+            /^(help|info|information)/i,
+            // Russian
+            /^(как|что|почему|объясни)/i,
+            /^(помощь|справка|информация)/i,
+            // Ukrainian
+            /^(як|що|чому|поясни)/i,
+            // Arabic
+            /^(كيف|ما|لماذا)/i,
+            // Turkish
+            /^(nasıl|ne|neden)/i,
+            // Polish
+            /^(jak|co|dlaczego)/i
         ];
         
         let intent = 'explain'; // default
@@ -207,10 +296,25 @@ class VoiceUIController {
             }
         }
         
-        // Extract target keywords (remove intent words)
-        const intentWords = ['gehe', 'zeige', 'öffne', 'navigiere', 'klick', 'drücke', 'klicke', 
-                            'wie', 'was', 'warum', 'wo', 'ist', 'finde', 'ich', 'auf', 'zu',
-                            'go', 'show', 'open', 'click', 'press', 'how', 'what', 'where', 'find'];
+        // Extract target keywords (remove intent words - multi-language)
+        const intentWords = [
+            // German
+            'gehe', 'zeige', 'öffne', 'navigiere', 'klick', 'drücke', 'klicke', 
+            'wie', 'was', 'warum', 'wo', 'ist', 'finde', 'ich', 'auf', 'zu', 'der', 'die', 'das',
+            // English
+            'go', 'show', 'open', 'click', 'press', 'how', 'what', 'where', 'find', 'the', 'to',
+            // Russian
+            'покажи', 'открой', 'перейди', 'переключи', 'кликни', 'нажми', 'подсвети', 'сделай',
+            'как', 'что', 'почему', 'где', 'найди', 'страницу', 'функцию', 'этого', 'сайта',
+            'тестирую', 'управление', 'интерфейсом', 'пользователя', 'разработчик', 'привет',
+            'чтото', 'что-то', 'что', 'то',
+            // Ukrainian
+            'покажи', 'відкрий', 'перейди', 'клікни', 'натисни', 'як', 'що', 'чому', 'де',
+            // Arabic
+            'أرني', 'افتح', 'انتقل', 'انقر', 'كيف', 'ما', 'أين',
+            // Common
+            'please', 'bitte', 'пожалуйста'
+        ];
         
         const keywords = words.filter(word => 
             word.length > 2 && 
@@ -226,12 +330,29 @@ class VoiceUIController {
     }
     
     /**
-     * Detect action type from command
+     * Detect action type from command (Multi-language)
      */
     detectActionType(text) {
-        if (/klick|click|drücke|press/i.test(text)) return 'click';
-        if (/fülle|eingeben|type|fill|enter/i.test(text)) return 'fill';
-        if (/buche|reserviere|book|reserve/i.test(text)) return 'book';
+        // Click actions
+        if (/klick|click|drücke|press|кликни|нажми|щёлкни|клікни|натисни|انقر|اضغط|tıkla|kliknij/i.test(text)) {
+            return 'click';
+        }
+        // Highlight actions
+        if (/подсвети|highlight|hervorheben|mark|виділи|أبرز|vurgula|podświetl/i.test(text)) {
+            return 'highlight';
+        }
+        // Fill/input actions
+        if (/fülle|eingeben|type|fill|enter|заполни|введи|набери|заповни|املأ|doldur|wypełnij/i.test(text)) {
+            return 'fill';
+        }
+        // Book/reserve actions
+        if (/buche|reserviere|book|reserve|забронируй|запиши|احجز|rezerve|rezerwuj/i.test(text)) {
+            return 'book';
+        }
+        // General action (сделай что-то)
+        if (/сделай|выполни|действие|зроби|قم|yap|wykonaj/i.test(text)) {
+            return 'action';
+        }
         return 'click'; // default action
     }
     
@@ -315,7 +436,7 @@ class VoiceUIController {
     }
     
     /**
-     * Handle action commands (click, fill, etc.)
+     * Handle action commands (click, fill, highlight, etc.)
      */
     async handleAction(parsed) {
         const { keywords, action } = parsed;
@@ -324,9 +445,14 @@ class VoiceUIController {
         const targetElement = this.findTargetElement(keywords);
         
         if (!targetElement) {
+            // For general "do something" commands, suggest key actions on current page
+            if (action === 'action' && keywords.length === 0) {
+                return await this.suggestActions();
+            }
+            
             return {
                 success: false,
-                message: 'Ich konnte das Element nicht finden.',
+                message: 'Ich konnte das Element nicht finden. | Не могу найти элемент. | I cannot find the element.',
                 action: 'element_not_found'
             };
         }
@@ -344,8 +470,17 @@ class VoiceUIController {
                 
                 return {
                     success: true,
-                    message: `Klicke auf: ${targetElement.title}`,
+                    message: `Klicke auf: ${targetElement.title} | Кликаю на: ${targetElement.title}`,
                     action: 'element_click',
+                    target: targetElement.title
+                };
+            
+            case 'highlight':
+                // Just highlight, no click
+                return {
+                    success: true,
+                    message: `Markiert: ${targetElement.title} | Подсвечено: ${targetElement.title}`,
+                    action: 'element_highlight',
                     target: targetElement.title
                 };
             
@@ -355,18 +490,77 @@ class VoiceUIController {
                 
                 return {
                     success: true,
-                    message: `Bereit für Eingabe in: ${targetElement.title}`,
+                    message: `Bereit für Eingabe in: ${targetElement.title} | Готово для ввода: ${targetElement.title}`,
                     action: 'element_focus',
+                    target: targetElement.title
+                };
+            
+            case 'action':
+                // General action - try clicking
+                setTimeout(() => {
+                    targetElement.element.click();
+                }, 1000);
+                
+                return {
+                    success: true,
+                    message: `Führe aus: ${targetElement.title} | Выполняю: ${targetElement.title}`,
+                    action: 'element_action',
                     target: targetElement.title
                 };
             
             default:
                 return {
                     success: false,
-                    message: 'Diese Aktion wird noch nicht unterstützt.',
+                    message: 'Diese Aktion wird noch nicht unterstützt. | Это действие пока не поддерживается.',
                     action: 'unsupported_action'
                 };
         }
+    }
+    
+    /**
+     * Suggest key actions when user says "do something" without specifics
+     */
+    async suggestActions() {
+        // Get all interactive elements on page
+        const suggestions = [];
+        
+        // Priority elements to suggest
+        const prioritySelectors = [
+            'button.btn-primary',
+            'a.btn-primary',
+            '[data-voice-nav*="search"]',
+            '[data-voice-nav*="login"]',
+            '[data-voice-nav*="register"]',
+            'button[type="submit"]'
+        ];
+        
+        for (const selector of prioritySelectors) {
+            const element = document.querySelector(selector);
+            if (element) {
+                const title = element.getAttribute('data-voice-title') || element.textContent.trim();
+                suggestions.push(title);
+                
+                // Highlight first suggestion
+                if (suggestions.length === 1) {
+                    await this.highlightElement(element);
+                }
+            }
+        }
+        
+        if (suggestions.length > 0) {
+            return {
+                success: true,
+                message: `Ich schlage vor: ${suggestions[0]} | Предлагаю: ${suggestions[0]} | I suggest: ${suggestions[0]}`,
+                action: 'suggest_action',
+                suggestions: suggestions
+            };
+        }
+        
+        return {
+            success: false,
+            message: 'Keine Vorschläge verfügbar. | Нет доступных предложений. | No suggestions available.',
+            action: 'no_suggestions'
+        };
     }
     
     /**
