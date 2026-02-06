@@ -66,9 +66,42 @@ class VoiceNavigationSystem {
      * Check if browser supports required APIs
      */
     checkBrowserSupport() {
-        return !!(navigator.mediaDevices && 
-                  navigator.mediaDevices.getUserMedia && 
-                  window.MediaRecorder);
+        const hasNavigator = typeof navigator !== 'undefined';
+        const hasMediaDevices = hasNavigator && !!navigator.mediaDevices;
+        const hasGetUserMedia = hasMediaDevices && !!navigator.mediaDevices.getUserMedia;
+        const hasMediaRecorder = typeof MediaRecorder !== 'undefined';
+        
+        console.log('🔍 Browser support check:', {
+            navigator: hasNavigator,
+            mediaDevices: hasMediaDevices,
+            getUserMedia: hasGetUserMedia,
+            MediaRecorder: hasMediaRecorder,
+            isSecureContext: window.isSecureContext,
+            protocol: window.location.protocol
+        });
+        
+        if (!hasNavigator) {
+            console.error('❌ Navigator API not available');
+            return false;
+        }
+        
+        if (!hasMediaDevices) {
+            console.error('❌ MediaDevices API not available (HTTPS/localhost required)');
+            return false;
+        }
+        
+        if (!hasGetUserMedia) {
+            console.error('❌ getUserMedia not available');
+            return false;
+        }
+        
+        if (!hasMediaRecorder) {
+            console.error('❌ MediaRecorder not available');
+            return false;
+        }
+        
+        console.log('✅ Browser fully supports voice recording');
+        return true;
     }
     
     /**
@@ -241,6 +274,8 @@ class VoiceNavigationSystem {
      */
     async startRecording() {
         try {
+            console.log('🎤 Requesting microphone access...');
+            
             // Request microphone access
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 audio: {
@@ -248,6 +283,11 @@ class VoiceNavigationSystem {
                     noiseSuppression: true,
                     sampleRate: 44100
                 } 
+            });
+            
+            console.log('✅ Microphone access granted:', {
+                audioTracks: stream.getAudioTracks().length,
+                trackSettings: stream.getAudioTracks()[0]?.getSettings()
             });
             
             // Check supported MIME types

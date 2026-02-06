@@ -403,11 +403,26 @@
 
         async function startHelpChatRecording() {
             try {
-                // Check if browser supports MediaRecorder
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    alert('Dein Browser unterstützt keine Sprachaufnahme.');
+                // Check browser support with detailed diagnostics
+                if (!navigator.mediaDevices) {
+                    console.error('❌ navigator.mediaDevices not available');
+                    alert('Dein Browser unterstützt keine Sprachaufnahme.\n\nBitte verwende Chrome, Edge oder Safari.');
                     return;
                 }
+
+                if (!navigator.mediaDevices.getUserMedia) {
+                    console.error('❌ getUserMedia not available');
+                    alert('Dein Browser unterstützt keine Sprachaufnahme.\n\nBitte verwende Chrome, Edge oder Safari.');
+                    return;
+                }
+
+                if (!window.MediaRecorder) {
+                    console.error('❌ MediaRecorder not available');
+                    alert('Dein Browser unterstützt keine Audioaufnahme.\n\nBitte aktualisiere deinen Browser.');
+                    return;
+                }
+
+                console.log('✅ Browser supports voice recording');
 
                 // Request microphone access
                 const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -416,6 +431,11 @@
                         noiseSuppression: true,
                         sampleRate: 44100
                     } 
+                });
+
+                console.log('✅ Microphone access granted:', {
+                    audioTracks: stream.getAudioTracks().length,
+                    trackSettings: stream.getAudioTracks()[0]?.getSettings()
                 });
 
                 // Get supported MIME type
