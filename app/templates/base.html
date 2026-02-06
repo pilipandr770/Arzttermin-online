@@ -353,6 +353,9 @@
         }
     </script>
 
+    <!-- Voice Navigation System (Whisper + OpenAI TTS) -->
+    <script src="{{ url_for('static', filename='js/voice_navigation.js') }}"></script>
+
     <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}?v={{ config['VERSION'] or '1.0' }}"></script>
     {% block scripts %}{% endblock %}

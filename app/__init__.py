@@ -87,6 +87,7 @@ def create_app(config_name='default'):
     from app.routes.search import search_api
     from app.routes.practice import practice_api
     from app.routes.admin import admin_api
+    from app.routes.voice import voice_bp
     
     app.register_blueprint(main_bp)
     app.register_blueprint(auth.bp, url_prefix='/api/auth')
@@ -103,6 +104,7 @@ def create_app(config_name='default'):
     app.register_blueprint(calendar_integration.bp)
     app.register_blueprint(chat.bp)  # AI Chatbot для практик
     app.register_blueprint(help_chat.bp)  # AI Help Chatbot для помощи пользователям
+    app.register_blueprint(voice_bp)  # Voice navigation with Whisper + TTS
     
     # Регистрация веб-интерфейсов (без /api префикса)
     app.register_blueprint(doctor.bp, name='doctor_web')

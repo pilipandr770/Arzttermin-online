@@ -237,7 +237,9 @@ def help_chat():
     {
         "message": "Wie buche ich einen Termin?",
         "current_page": "/search",
-        "session_id": "optional-uuid"  // ephemeral only
+        "session_id": "optional-uuid",  // ephemeral only
+        "language": "de",  // optional: detected language from Whisper API
+        "voice_mode": false  // optional: true for short voice-friendly responses
     }
     
     Response JSON (SUCCESS):
@@ -285,6 +287,26 @@ def help_chat():
         # Session ID (ephemeral, no DB storage)
         session_id = data.get('session_id') or str(uuid.uuid4())
         
+        # Language detection from Whisper API (if provided)
+        detected_language = data.get('language', 'de')  # Default: German
+        voice_mode = data.get('voice_mode', False)  # Short responses for TTS
+        
+        # Language name mapping
+        language_names = {
+            'de': 'Deutsch',
+            'en': 'English',
+            'ru': 'Русский',
+            'uk': 'Українська',
+            'ar': 'العربية',
+            'es': 'Español',
+            'fr': 'Français',
+            'it': 'Italiano',
+            'tr': 'Türkçe',
+            'pl': 'Polski'
+        }
+        
+        language_name = language_names.get(detected_language, 'Deutsch')
+        
         # ✅ PHASE 3: Scope validation BEFORE processing
         from app.utils.chatbot_scope import validate_scope
         
@@ -311,6 +333,14 @@ def help_chat():
         
         # Add hard medical disclaimer to all system prompts
         system_prompt += "\n\n🚫 WICHTIG: Du darfst NIEMALS medizinische Fragen beantworten. Beginne jede Antwort mit einem Hinweis."
+        
+        # Multi-language support: Respond in detected language
+        if detected_language != 'de':
+            system_prompt += f"\n\n🌍 SPRACHE: Antworte IMMER auf {language_name} ({detected_language}). Der Benutzer spricht diese Sprache."
+        
+        # Voice mode: Short, concise responses for TTS
+        if voice_mode:
+            system_prompt += "\n\n🎤 SPRACHMODUS: Gib KURZE, sprachfreundliche Antworten (max 2-3 Sätze). Keine Listen, keine Markdown. Natürliche Sprechweise."
         
         # OpenAI API call (stateless - NO history)
         try:
@@ -365,6 +395,7 @@ def help_chat():
                 'user_type': user_type,
                 'current_page': current_page,
                 'session_id': session_id,
+                'language': detected_language,  # Language code for TTS
                 'disclaimer': 'Dies ist keine medizinische Beratung.'
             })
             
