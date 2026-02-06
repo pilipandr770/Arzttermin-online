@@ -61,20 +61,14 @@ def create_app(config_name='default'):
     
     # Security Headers (Talisman)
     # Skip in development to avoid HTTPS issues
+    # CSP temporarily disabled due to extensive inline event handlers in templates
+    # TODO: Refactor onclick handlers to addEventListener pattern
     if app.config.get('ENV') != 'development':
         Talisman(app,
             force_https=True,
             strict_transport_security=True,
             strict_transport_security_max_age=31536000,
-            content_security_policy={
-                'default-src': ["'self'"],
-                'script-src': ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"],
-                'style-src': ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"],
-                'img-src': ["'self'", "data:", "https:"],
-                'font-src': ["'self'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"],
-                'connect-src': ["'self'"]
-            },
-            content_security_policy_nonce_in=['script-src']
+            content_security_policy=False  # Disabled until onclick refactoring
         )
     
     # Security Checks
